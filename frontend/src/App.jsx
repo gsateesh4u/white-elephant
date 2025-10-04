@@ -273,14 +273,6 @@ export default function App() {
     !gameState.gameCompleted &&
     gameState.completedTurnOrder.length === 0;
 
-  if (!host) {
-    return (
-      <div className="app">
-        <LoginForm onSubmit={handleLogin} loading={actionLoading} error={error} />
-      </div>
-    );
-  }
-
   const displayState = initialLoading ? placeholderStateRef.current : gameState;
   const swapModeActive = Boolean(
     displayState.swapModeActive || (displayState.finalSwapAvailable && !displayState.gameCompleted)
@@ -325,6 +317,14 @@ export default function App() {
   }, [displayState.gifts, giftFilter]);
 
   const currentParticipantName = currentParticipant ? currentParticipant.name : 'Awaiting next participant';
+
+  if (!host) {
+    return (
+      <div className="app">
+        <LoginForm onSubmit={handleLogin} loading={actionLoading} error={error} />
+      </div>
+    );
+  }
 
   return (
     <div className="app">
