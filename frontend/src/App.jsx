@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchState,
   login,
@@ -20,7 +20,7 @@ import { useCelebration } from './hooks/useCelebration.js';
 const LOCAL_STORAGE_TOKEN_KEY = 'white-elephant.hostToken';
 const LOCAL_STORAGE_HOST_NAME = 'white-elephant.hostName';
 
-const defaultState = {
+const createDefaultState = () => ({
   participants: [],
   gifts: [],
   upcomingTurnOrder: [],
@@ -32,7 +32,8 @@ const defaultState = {
   finalSwapUsed: false,
   swapModeActive: false,
   firstParticipantId: null,
-};
+  immediateStealBlocks: {},
+});
 
 export default function App() {
   const [host, setHost] = useState(() => {
@@ -40,7 +41,7 @@ export default function App() {
     const hostName = localStorage.getItem(LOCAL_STORAGE_HOST_NAME);
     return token ? { token, hostName } : null;
   });
-  const [gameState, setGameState] = useState(defaultState);
+  const [gameState, setGameState] = useState(createDefaultState);
   const [initialLoading, setInitialLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -49,6 +50,8 @@ export default function App() {
   const celebration = useCelebration();
   const previousStateRef = useRef();
   const overlayTimeoutRef = useRef(null);
+  const placeholderStateRef = useRef(createDefaultState());
+
 
   const applyState = useCallback(
     (nextState) => {
@@ -97,6 +100,27 @@ export default function App() {
       }
     };
   }, []);
+
+  const resetView = useCallback(() => {
+    const nextState = createDefaultState();
+    setGameState(nextState);
+    placeholderStateRef.current = nextState;
+    setGiftFilter('all');
+    setError(null);
+    previousStateRef.current = undefined;
+    setInitialLoading(false);
+  }, [setGameState, setGiftFilter, setError, setInitialLoading]);
+
+  useEffect(() => {
+    if (host) {
+      setInitialLoading(true);
+      setGiftFilter('all');
+      setError(null);
+      refreshState();
+    } else {
+      resetView();
+    }
+  }, [host, refreshState, resetView, setInitialLoading, setGiftFilter, setError]);
 
   const handleLogin = async (credentials) => {
     setActionLoading(true);
@@ -257,7 +281,7 @@ export default function App() {
     );
   }
 
-  const displayState = initialLoading ? defaultState : gameState;
+  const displayState = initialLoading ? placeholderStateRef.current : gameState;
   const swapModeActive = Boolean(
     displayState.swapModeActive || (displayState.finalSwapAvailable && !displayState.gameCompleted)
   );
@@ -266,12 +290,52 @@ export default function App() {
     (participant) => participant.id === currentParticipantId
   );
 
+  const giftFilterOptions = useMemo(() => {
+    const allGifts = displayState.gifts || [];
+    const revealed = allGifts.filter((gift) => gift.revealed);
+    const wrappedCount = allGifts.length - revealed.length;
+    return [
+      { value: 'wrapped', label: 'Show wrapped', count: wrappedCount },
+      { value: 'revealed', label: 'Show revealed', count: revealed.length },
+      { value: 'revealed-steals', label: 'Show revealed in steal counter asc', count: revealed.length },
+      { value: 'all', label: 'Show all', count: allGifts.length },
+    ];
+  }, [displayState.gifts]);
+
+  const filteredGifts = useMemo(() => {
+    const allGifts = displayState.gifts || [];
+    switch (giftFilter) {
+      case 'wrapped':
+        return allGifts.filter((gift) => !gift.revealed);
+      case 'revealed':
+        return allGifts.filter((gift) => gift.revealed);
+      case 'revealed-steals':
+        return allGifts
+          .filter((gift) => gift.revealed)
+          .slice()
+          .sort((a, b) => {
+            if (a.timesStolen !== b.timesStolen) {
+              return a.timesStolen - b.timesStolen;
+            }
+            return a.name.localeCompare(b.name);
+          });
+      default:
+        return allGifts;
+    }
+  }, [displayState.gifts, giftFilter]);
+
+  const currentParticipantName = currentParticipant ? currentParticipant.name : 'Awaiting next participant';
+
   return (
     <div className="app">
       <header className="topbar">
         <div>
           <h1>White Elephant Control Room</h1>
           <p className="muted">Welcome back, {host.hostName || 'Host'}.</p>
+        </div>
+        <div className="topbar-status">
+          <span className="topbar-status-label">Current participant</span>
+          <span className="topbar-status-value">{currentParticipantName}</span>
         </div>
         <div className="topbar-actions">
           <button
@@ -322,15 +386,20 @@ export default function App() {
 
         <div className="right-column">
           <GiftGrid
-            gifts={displayState.gifts}
+            gifts={filteredGifts}
             participants={displayState.participants}
             currentParticipantId={currentParticipantId}
             mode={swapModeActive ? 'swap' : 'turn'}
+            stealBlocks={displayState.immediateStealBlocks}
             onReveal={handleReveal}
             onSteal={handleSteal}
+            filters={giftFilterOptions}
+            activeFilter={giftFilter}
+            onFilterChange={setGiftFilter}
           />
         </div>
       </main>
     </div>
   );
 }
+

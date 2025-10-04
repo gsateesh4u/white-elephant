@@ -13,7 +13,7 @@
   });
 
   return (
-    <div className="panel">
+    <div className="panel participants-panel">
       <div className="panel-header">
         <h2>Participants</h2>
         {swapModeActive && <span className="badge">Swap phase</span>}

@@ -5,6 +5,7 @@ import com.example.whiteelephant.model.Gift;
 import com.example.whiteelephant.model.Participant;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class GameStateResponse {
@@ -12,6 +13,7 @@ public class GameStateResponse {
     private final List<GiftView> gifts;
     private final List<String> upcomingTurnOrder;
     private final List<String> completedTurnOrder;
+    private final Map<String, String> immediateStealBlocks;
     private final String currentParticipantId;
     private final boolean gameStarted;
     private final boolean gameCompleted;
@@ -24,6 +26,7 @@ public class GameStateResponse {
                               List<GiftView> gifts,
                               List<String> upcomingTurnOrder,
                               List<String> completedTurnOrder,
+                              Map<String, String> immediateStealBlocks,
                               String currentParticipantId,
                               boolean gameStarted,
                               boolean gameCompleted,
@@ -35,6 +38,7 @@ public class GameStateResponse {
         this.gifts = gifts;
         this.upcomingTurnOrder = upcomingTurnOrder;
         this.completedTurnOrder = completedTurnOrder;
+        this.immediateStealBlocks = immediateStealBlocks;
         this.currentParticipantId = currentParticipantId;
         this.gameStarted = gameStarted;
         this.gameCompleted = gameCompleted;
@@ -55,12 +59,14 @@ public class GameStateResponse {
 
         List<String> upcoming = state.getTurnQueue().stream().collect(Collectors.toList());
         List<String> completed = List.copyOf(state.getCompletedTurnOrder());
+        Map<String, String> blocks = Map.copyOf(state.getImmediateStealBlocks());
 
         return new GameStateResponse(
                 participants,
                 gifts,
                 upcoming,
                 completed,
+                blocks,
                 state.getCurrentParticipantId(),
                 state.isGameStarted(),
                 state.isGameCompleted(),
@@ -85,6 +91,10 @@ public class GameStateResponse {
 
     public List<String> getCompletedTurnOrder() {
         return completedTurnOrder;
+    }
+
+    public Map<String, String> getImmediateStealBlocks() {
+        return immediateStealBlocks;
     }
 
     public String getCurrentParticipantId() {
@@ -228,3 +238,4 @@ public class GameStateResponse {
         }
     }
 }
+

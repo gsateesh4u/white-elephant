@@ -41,6 +41,7 @@ public class GameService {
         state.getGifts().clear();
         state.getTurnQueue().clear();
         state.getCompletedTurnOrder().clear();
+        state.getImmediateStealBlocks().clear();
         state.setGameStarted(false);
         state.setGameCompleted(false);
         state.setFinalSwapAvailable(false);
@@ -69,6 +70,20 @@ public class GameService {
         participants.add(new Participant("p-lena", "Lena Rivera", "https://i.pravatar.cc/150?img=18"));
         participants.add(new Participant("p-omar", "Omar Davis", "https://i.pravatar.cc/150?img=67"));
         participants.add(new Participant("p-tara", "Tara Singh", "https://i.pravatar.cc/150?img=23"));
+        participants.add(new Participant("p-noah", "Noah Brooks", "https://i.pravatar.cc/150?img=41"));
+        participants.add(new Participant("p-riley", "Riley Kim", "https://i.pravatar.cc/150?img=16"));
+        participants.add(new Participant("p-ivy", "Ivy Martinez", "https://i.pravatar.cc/150?img=54"));
+        participants.add(new Participant("p-zoe", "Zoe Thompson", "https://i.pravatar.cc/150?img=21"));
+        participants.add(new Participant("p-chris", "Chris Allen", "https://i.pravatar.cc/150?img=14"));
+        participants.add(new Participant("p-jordan", "Jordan Lee", "https://i.pravatar.cc/150?img=37"));
+        participants.add(new Participant("p-amelia", "Amelia Turner", "https://i.pravatar.cc/150?img=9"));
+        participants.add(new Participant("p-liam", "Liam Walker", "https://i.pravatar.cc/150?img=28"));
+        participants.add(new Participant("p-emma", "Emma Hughes", "https://i.pravatar.cc/150?img=52"));
+        participants.add(new Participant("p-harper", "Harper Scott", "https://i.pravatar.cc/150?img=48"));
+        participants.add(new Participant("p-nico", "Nico Ramirez", "https://i.pravatar.cc/150?img=57"));
+        participants.add(new Participant("p-sophia", "Sophia Bennett", "https://i.pravatar.cc/150?img=11"));
+        participants.add(new Participant("p-owen", "Owen Parker", "https://i.pravatar.cc/150?img=44"));
+        participants.add(new Participant("p-lucas", "Lucas Nguyen", "https://i.pravatar.cc/150?img=35"));
         return participants;
     }
 
@@ -80,6 +95,20 @@ public class GameService {
         gifts.add(new Gift("g-cozy-throw", "Cozy Knit Throw", "Weighted knit blanket", "https://images.unsplash.com/photo-1505692794403-55b39dd74f81?auto=format&fit=crop&w=400&q=80", participants.get(3).getId()));
         gifts.add(new Gift("g-mixology", "Mixology Flight", "Craft cocktail infusion set", "https://images.unsplash.com/photo-1600195077075-0e4a87317f5f?auto=format&fit=crop&w=400&q=80", participants.get(4).getId()));
         gifts.add(new Gift("g-plant-buddy", "Plant Buddy", "Self-watering plant terrarium", "https://images.unsplash.com/photo-1524592094714-0f0654e20314?auto=format&fit=crop&w=400&q=80", participants.get(5).getId()));
+        gifts.add(new Gift("g-smart-hydro", "Smart Hydro Garden", "Countertop herb-growing system", "https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?auto=format&fit=crop&w=400&q=80", participants.get(6).getId()));
+        gifts.add(new Gift("g-brewer-kit", "Cold Brew Kit", "All-in-one cold brew set with beans", "https://images.unsplash.com/photo-1461988625982-7e46a099bf4f?auto=format&fit=crop&w=400&q=80", participants.get(7).getId()));
+        gifts.add(new Gift("g-chocolate-tour", "Chocolate Tour Box", "International artisan chocolate sampler", "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=400&q=80", participants.get(8).getId()));
+        gifts.add(new Gift("g-movie-marathon", "Movie Marathon Pack", "Projector-ready snack and film bundle", "https://images.unsplash.com/photo-1517602302552-471fe67acf66?auto=format&fit=crop&w=400&q=80", participants.get(9).getId()));
+        gifts.add(new Gift("g-campfire-kit", "Campfire Comfort Kit", "Portable fire pit with s'mores set", "https://images.unsplash.com/photo-1505852679233-d9fd70aff56d?auto=format&fit=crop&w=400&q=80", participants.get(10).getId()));
+        gifts.add(new Gift("g-artisan-tea", "Artisan Tea Flight", "Curated loose-leaf tasting collection", "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=400&q=80", participants.get(11).getId()));
+        gifts.add(new Gift("g-vr-escape", "VR Escape Puzzle", "Immersive escape-room experience voucher", "https://images.unsplash.com/photo-1472289065668-ce650ac443d2?auto=format&fit=crop&w=400&q=80", participants.get(12).getId()));
+        gifts.add(new Gift("g-chef-toolkit", "Chef's Toolkit", "Premium knives and prep gadgets", "https://images.unsplash.com/photo-1514996937319-344454492b37?auto=format&fit=crop&w=400&q=80", participants.get(13).getId()));
+        gifts.add(new Gift("g-fitness-pack", "Fitness Essentials Pack", "Resistance kit with smart jump rope", "https://images.unsplash.com/photo-1517832207067-4db24a2ae47c?auto=format&fit=crop&w=400&q=80", participants.get(14).getId()));
+        gifts.add(new Gift("g-photo-journey", "Photo Journey Set", "Instant camera with travel book", "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=400&q=80", participants.get(15).getId()));
+        gifts.add(new Gift("g-music-lounge", "Music Lounge Bundle", "Bluetooth speaker and vinyl sampler", "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=400&q=80", participants.get(16).getId()));
+        gifts.add(new Gift("g-spa-set", "Spa Retreat Set", "Aromatherapy and plush robe", "https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=400&q=80", participants.get(17).getId()));
+        gifts.add(new Gift("g-tech-toy", "Tech Toy Drone", "Compact camera drone with controller", "https://images.unsplash.com/photo-1484704849700-f032a568e944?auto=format&fit=crop&w=400&q=80", participants.get(18).getId()));
+        gifts.add(new Gift("g-sculpt-kit", "Sculpt & Create Kit", "Ceramic sculpting starter bundle", "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=400&q=80", participants.get(19).getId()));
         return gifts;
     }
 
@@ -134,6 +163,7 @@ public class GameService {
         Participant participant = state.findParticipant(request.getParticipantId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Participant not found"));
 
+        state.getImmediateStealBlocks().remove(participant.getId());
         beginGameIfNeeded();
         gift.setRevealed(true);
         gift.setOwnerParticipantId(participant.getId());
@@ -155,6 +185,10 @@ public class GameService {
         if (gift.isLocked()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Gift can no longer be stolen");
         }
+        String blockedGiftId = state.getImmediateStealBlocks().get(request.getParticipantId());
+        if (blockedGiftId != null && blockedGiftId.equals(gift.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot immediately steal back this gift");
+        }
         if (Objects.equals(gift.getOwnerParticipantId(), request.getParticipantId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Participant already owns this gift");
         }
@@ -164,6 +198,7 @@ public class GameService {
         Participant previousOwner = state.findParticipant(gift.getOwnerParticipantId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found"));
 
+        state.getImmediateStealBlocks().remove(current.getId());
         beginGameIfNeeded();
 
         String previousGiftForCurrent = current.getCurrentGiftId();
@@ -184,6 +219,7 @@ public class GameService {
 
         previousOwner.setCurrentGiftId(null);
 
+        state.getImmediateStealBlocks().put(previousOwner.getId(), gift.getId());
         recordCompletedParticipant(current.getId());
         rotateQueueAfterSteal(previousOwner.getId());
         maybeAutoFinish();
@@ -194,6 +230,7 @@ public class GameService {
         requireHostToken(token);
         ensureSwapModeActive();
         validateCurrentParticipant(request.getParticipantId());
+        state.getImmediateStealBlocks().remove(request.getParticipantId());
         passCurrentParticipant();
         maybeAutoFinish();
         return GameStateResponse.from(state);
@@ -216,6 +253,7 @@ public class GameService {
         state.setSwapModeActive(false);
         state.setFinalSwapAvailable(false);
         state.setFinalSwapUsed(true);
+        state.getImmediateStealBlocks().clear();
         state.setCurrentParticipantId(null);
         state.getTurnQueue().clear();
     }

@@ -10,6 +10,7 @@
   stealLabel = 'Steal gift',
   showReveal = true,
   showSteal = true,
+  stealDisabledReason,
 }) {
   const statusLabel = gift.revealed
     ? owner
@@ -63,6 +64,7 @@
             className="secondary"
             onClick={() => onSteal(gift)}
             disabled={!canSteal}
+            title={stealDisabledReason || undefined}
           >
             {stealLabel}
           </button>
@@ -71,3 +73,4 @@
     </div>
   );
 }
+

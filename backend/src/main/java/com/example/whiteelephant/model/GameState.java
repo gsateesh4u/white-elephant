@@ -3,7 +3,9 @@ package com.example.whiteelephant.model;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class GameState {
@@ -11,6 +13,7 @@ public class GameState {
     private final List<Gift> gifts = new ArrayList<>();
     private final Deque<String> turnQueue = new ArrayDeque<>();
     private final List<String> completedTurnOrder = new ArrayList<>();
+    private final Map<String, String> immediateStealBlocks = new HashMap<>();
     private boolean gameStarted;
     private boolean gameCompleted;
     private boolean finalSwapAvailable;
@@ -33,6 +36,10 @@ public class GameState {
 
     public List<String> getCompletedTurnOrder() {
         return completedTurnOrder;
+    }
+
+    public Map<String, String> getImmediateStealBlocks() {
+        return immediateStealBlocks;
     }
 
     public boolean isGameStarted() {
