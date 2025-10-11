@@ -6,16 +6,18 @@ public class Gift {
     private final String description;
     private final String imageUrl;
     private final String originalOwnerParticipantId;
+    private final String country;
     private String ownerParticipantId;
     private boolean revealed;
     private int timesStolen;
 
-    public Gift(String id, String name, String description, String imageUrl, String originalOwnerParticipantId) {
+    public Gift(String id, String name, String description, String imageUrl, String originalOwnerParticipantId, String country) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.imageUrl = imageUrl;
         this.originalOwnerParticipantId = originalOwnerParticipantId;
+        this.country = country;
     }
 
     public String getId() {
@@ -32,6 +34,10 @@ public class Gift {
 
     public String getImageUrl() {
         return imageUrl;
+    }
+
+    public String getCountry() {
+        return country;
     }
 
     public String getOriginalOwnerParticipantId() {

@@ -6,12 +6,14 @@ public class Participant {
     private final String id;
     private final String name;
     private final String photoUrl;
+    private final String country;
     private String currentGiftId;
 
-    public Participant(String id, String name, String photoUrl) {
+    public Participant(String id, String name, String photoUrl, String country) {
         this.id = id;
         this.name = name;
         this.photoUrl = photoUrl;
+        this.country = country;
     }
 
     public String getId() {
@@ -24,6 +26,10 @@ public class Participant {
 
     public String getPhotoUrl() {
         return photoUrl;
+    }
+
+    public String getCountry() {
+        return country;
     }
 
     public String getCurrentGiftId() {

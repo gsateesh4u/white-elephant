@@ -129,12 +129,14 @@ public class GameStateResponse {
         private final String id;
         private final String name;
         private final String photoUrl;
+        private final String country;
         private final String currentGiftId;
 
-        private ParticipantView(String id, String name, String photoUrl, String currentGiftId) {
+        private ParticipantView(String id, String name, String photoUrl, String country, String currentGiftId) {
             this.id = id;
             this.name = name;
             this.photoUrl = photoUrl;
+            this.country = country;
             this.currentGiftId = currentGiftId;
         }
 
@@ -143,6 +145,7 @@ public class GameStateResponse {
                     participant.getId(),
                     participant.getName(),
                     participant.getPhotoUrl(),
+                    participant.getCountry(),
                     participant.getCurrentGiftId()
             );
         }
@@ -159,6 +162,10 @@ public class GameStateResponse {
             return photoUrl;
         }
 
+        public String getCountry() {
+            return country;
+        }
+
         public String getCurrentGiftId() {
             return currentGiftId;
         }
@@ -171,6 +178,7 @@ public class GameStateResponse {
         private final String imageUrl;
         private final boolean revealed;
         private final String ownerParticipantId;
+        private final String country;
         private final int timesStolen;
         private final boolean locked;
 
@@ -180,6 +188,7 @@ public class GameStateResponse {
                          String imageUrl,
                          boolean revealed,
                          String ownerParticipantId,
+                         String country,
                          int timesStolen,
                          boolean locked) {
             this.id = id;
@@ -188,6 +197,7 @@ public class GameStateResponse {
             this.imageUrl = imageUrl;
             this.revealed = revealed;
             this.ownerParticipantId = ownerParticipantId;
+            this.country = country;
             this.timesStolen = timesStolen;
             this.locked = locked;
         }
@@ -200,6 +210,7 @@ public class GameStateResponse {
                     gift.getImageUrl(),
                     gift.isRevealed(),
                     gift.getOwnerParticipantId(),
+                    gift.getCountry(),
                     gift.getTimesStolen(),
                     gift.isLocked()
             );
@@ -227,6 +238,10 @@ public class GameStateResponse {
 
         public String getOwnerParticipantId() {
             return ownerParticipantId;
+        }
+
+        public String getCountry() {
+            return country;
         }
 
         public int getTimesStolen() {

@@ -282,27 +282,34 @@ export default function App() {
     (participant) => participant.id === currentParticipantId
   );
 
+  const currentCountry = currentParticipant?.country;
+  const eligibleGifts = useMemo(() => {
+    const giftsList = displayState.gifts || [];
+    if (!currentCountry) {
+      return giftsList;
+    }
+    return giftsList.filter((gift) => gift.country === currentCountry);
+  }, [displayState.gifts, currentCountry]);
+
   const giftFilterOptions = useMemo(() => {
-    const allGifts = displayState.gifts || [];
-    const revealed = allGifts.filter((gift) => gift.revealed);
-    const wrappedCount = allGifts.length - revealed.length;
+    const revealed = eligibleGifts.filter((gift) => gift.revealed);
+    const wrappedCount = eligibleGifts.length - revealed.length;
     return [
       { value: 'wrapped', label: 'Show wrapped', count: wrappedCount },
       { value: 'revealed', label: 'Show revealed', count: revealed.length },
       { value: 'revealed-steals', label: 'Show revealed in steal counter asc', count: revealed.length },
-      { value: 'all', label: 'Show all', count: allGifts.length },
+      { value: 'all', label: 'Show all', count: eligibleGifts.length },
     ];
-  }, [displayState.gifts]);
+  }, [eligibleGifts]);
 
   const filteredGifts = useMemo(() => {
-    const allGifts = displayState.gifts || [];
     switch (giftFilter) {
       case 'wrapped':
-        return allGifts.filter((gift) => !gift.revealed);
+        return eligibleGifts.filter((gift) => !gift.revealed);
       case 'revealed':
-        return allGifts.filter((gift) => gift.revealed);
+        return eligibleGifts.filter((gift) => gift.revealed);
       case 'revealed-steals':
-        return allGifts
+        return eligibleGifts
           .filter((gift) => gift.revealed)
           .slice()
           .sort((a, b) => {
@@ -312,9 +319,9 @@ export default function App() {
             return a.name.localeCompare(b.name);
           });
       default:
-        return allGifts;
+        return eligibleGifts;
     }
-  }, [displayState.gifts, giftFilter]);
+  }, [eligibleGifts, giftFilter]);
 
   const currentParticipantName = currentParticipant ? currentParticipant.name : 'Awaiting next participant';
 

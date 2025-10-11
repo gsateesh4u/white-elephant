@@ -14,6 +14,7 @@ public class GameState {
     private final Deque<String> turnQueue = new ArrayDeque<>();
     private final List<String> completedTurnOrder = new ArrayList<>();
     private final Map<String, String> immediateStealBlocks = new HashMap<>();
+    private final Map<String, Integer> giftSwapCounts = new HashMap<>();
     private boolean gameStarted;
     private boolean gameCompleted;
     private boolean finalSwapAvailable;
@@ -40,6 +41,10 @@ public class GameState {
 
     public Map<String, String> getImmediateStealBlocks() {
         return immediateStealBlocks;
+    }
+
+    public Map<String, Integer> getGiftSwapCounts() {
+        return giftSwapCounts;
     }
 
     public boolean isGameStarted() {
