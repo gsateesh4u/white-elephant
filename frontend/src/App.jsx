@@ -15,10 +15,13 @@ import { GiftGrid } from './components/GiftGrid.jsx';
 import { TurnControls } from './components/TurnControls.jsx';
 import { FinalSwapPanel } from './components/FinalSwapPanel.jsx';
 import { ActionOverlay } from './components/ActionOverlay.jsx';
+import { GiftPreviewDialog } from './components/GiftPreviewDialog.jsx';
 import { useCelebration } from './hooks/useCelebration.js';
+import { useHostNarrator } from './hooks/useHostNarrator.js';
 
 const LOCAL_STORAGE_TOKEN_KEY = 'white-elephant.hostToken';
 const LOCAL_STORAGE_HOST_NAME = 'white-elephant.hostName';
+const LOCAL_STORAGE_VOICE = 'white-elephant.voiceEnabled';
 
 const createDefaultState = () => ({
   participants: [],
@@ -47,10 +50,20 @@ export default function App() {
   const [error, setError] = useState(null);
   const [activeOverlay, setActiveOverlay] = useState(null);
   const [giftFilter, setGiftFilter] = useState('all');
+  const [previewGiftId, setPreviewGiftId] = useState(null);
+  const [showAllCountries, setShowAllCountries] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    const stored = window.localStorage.getItem(LOCAL_STORAGE_VOICE);
+    return stored === null ? true : stored === 'true';
+  });
   const celebration = useCelebration();
   const previousStateRef = useRef();
   const overlayTimeoutRef = useRef(null);
   const placeholderStateRef = useRef(createDefaultState());
+  const previousStateSnapshotRef = useRef();
 
 
   const applyState = useCallback(
@@ -65,15 +78,17 @@ export default function App() {
           }
           if (!before.revealed && gift.revealed) {
             celebration('reveal');
+            setPreviewGiftId(gift.id);
           } else if (!before.locked && gift.locked) {
             celebration('locked');
           }
         });
       }
+      previousStateSnapshotRef.current = previous;
       setGameState(nextState);
       previousStateRef.current = nextState;
     },
-    [celebration]
+    [celebration, setPreviewGiftId]
   );
 
   const refreshState = useCallback(async () => {
@@ -108,8 +123,18 @@ export default function App() {
     setGiftFilter('all');
     setError(null);
     previousStateRef.current = undefined;
+    previousStateSnapshotRef.current = undefined;
+    setPreviewGiftId(null);
+    setShowAllCountries(false);
     setInitialLoading(false);
-  }, [setGameState, setGiftFilter, setError, setInitialLoading]);
+  }, [setGameState, setGiftFilter, setError, setInitialLoading, setPreviewGiftId, setShowAllCountries]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.localStorage.setItem(LOCAL_STORAGE_VOICE, String(voiceEnabled));
+  }, [voiceEnabled]);
 
   useEffect(() => {
     if (host) {
@@ -121,6 +146,19 @@ export default function App() {
       resetView();
     }
   }, [host, refreshState, resetView, setInitialLoading, setGiftFilter, setError]);
+
+  useEffect(() => {
+    if (!previewGiftId) {
+      return;
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setPreviewGiftId(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewGiftId, setPreviewGiftId]);
 
   const handleLogin = async (credentials) => {
     setActionLoading(true);
@@ -223,6 +261,28 @@ export default function App() {
     [handleAction, host, gameState.swapModeActive, gameState.finalSwapAvailable, gameState.gameCompleted, gameState.currentParticipantId, setError]
   );
 
+  const handleToggleAllCountries = useCallback(() => {
+    setShowAllCountries((previous) => !previous);
+  }, []);
+
+  const handleToggleVoice = useCallback(() => {
+    setVoiceEnabled((previous) => !previous);
+  }, []);
+
+  const handlePreviewGift = useCallback(
+    (gift) => {
+      if (!gift?.id) {
+        return;
+      }
+      setPreviewGiftId(gift.id);
+    },
+    [setPreviewGiftId]
+  );
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewGiftId(null);
+  }, [setPreviewGiftId]);
+
   const handlePass = useCallback(
     () => {
       if (!gameState.currentParticipantId) {
@@ -291,25 +351,32 @@ export default function App() {
     return giftsList.filter((gift) => gift.country === currentCountry);
   }, [displayState.gifts, currentCountry]);
 
+  const visibleGifts = useMemo(() => {
+    if (showAllCountries) {
+      return displayState.gifts || [];
+    }
+    return eligibleGifts;
+  }, [showAllCountries, displayState.gifts, eligibleGifts]);
+
   const giftFilterOptions = useMemo(() => {
-    const revealed = eligibleGifts.filter((gift) => gift.revealed);
-    const wrappedCount = eligibleGifts.length - revealed.length;
+    const revealed = visibleGifts.filter((gift) => gift.revealed);
+    const wrappedCount = visibleGifts.length - revealed.length;
     return [
       { value: 'wrapped', label: 'Show wrapped', count: wrappedCount },
       { value: 'revealed', label: 'Show revealed', count: revealed.length },
       { value: 'revealed-steals', label: 'Show revealed in steal counter asc', count: revealed.length },
-      { value: 'all', label: 'Show all', count: eligibleGifts.length },
+      { value: 'all', label: 'Show all', count: visibleGifts.length },
     ];
-  }, [eligibleGifts]);
+  }, [visibleGifts]);
 
   const filteredGifts = useMemo(() => {
     switch (giftFilter) {
       case 'wrapped':
-        return eligibleGifts.filter((gift) => !gift.revealed);
+        return visibleGifts.filter((gift) => !gift.revealed);
       case 'revealed':
-        return eligibleGifts.filter((gift) => gift.revealed);
+        return visibleGifts.filter((gift) => gift.revealed);
       case 'revealed-steals':
-        return eligibleGifts
+        return visibleGifts
           .filter((gift) => gift.revealed)
           .slice()
           .sort((a, b) => {
@@ -319,11 +386,38 @@ export default function App() {
             return a.name.localeCompare(b.name);
           });
       default:
-        return eligibleGifts;
+        return visibleGifts;
     }
-  }, [eligibleGifts, giftFilter]);
+  }, [visibleGifts, giftFilter]);
+
+  let previewGift = null;
+  if (previewGiftId) {
+    previewGift =
+      displayState.gifts.find((gift) => gift.id === previewGiftId) ||
+      gameState?.gifts?.find((gift) => gift.id === previewGiftId) ||
+      null;
+  }
+
+  let previewOwner = null;
+  if (previewGift?.ownerParticipantId) {
+    previewOwner =
+      displayState.participants.find(
+        (participant) => participant.id === previewGift.ownerParticipantId
+      ) ||
+      gameState?.participants?.find(
+        (participant) => participant.id === previewGift.ownerParticipantId
+      ) ||
+      null;
+  }
 
   const currentParticipantName = currentParticipant ? currentParticipant.name : 'Awaiting next participant';
+
+  useHostNarrator({
+    host,
+    gameState,
+    previousState: previousStateSnapshotRef.current,
+    enabled: voiceEnabled,
+  });
 
   if (!host) {
     return (
@@ -345,6 +439,16 @@ export default function App() {
           <span className="topbar-status-value">{currentParticipantName}</span>
         </div>
         <div className="topbar-actions">
+          <button
+            type="button"
+            className={`voice-toggle${voiceEnabled ? ' active' : ''}`}
+            onClick={handleToggleVoice}
+            aria-pressed={voiceEnabled}
+            title={voiceEnabled ? 'Turn off voice host' : 'Turn on voice host'}
+          >
+            <span className="icon" aria-hidden="true">{voiceEnabled ? '🔊' : '🔇'}</span>
+            <span className="label">{voiceEnabled ? 'Voice on' : 'Voice off'}</span>
+          </button>
           <button
             className="secondary"
             onClick={() => {
@@ -400,12 +504,16 @@ export default function App() {
             stealBlocks={displayState.immediateStealBlocks}
             onReveal={handleReveal}
             onSteal={handleSteal}
+            onPreview={handlePreviewGift}
+            showAllCountries={showAllCountries}
+            onToggleAllCountries={handleToggleAllCountries}
             filters={giftFilterOptions}
             activeFilter={giftFilter}
             onFilterChange={setGiftFilter}
           />
         </div>
       </main>
+      <GiftPreviewDialog gift={previewGift} owner={previewOwner} onClose={handleClosePreview} />
     </div>
   );
 }

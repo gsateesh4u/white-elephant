@@ -11,6 +11,9 @@ export function GiftGrid({
   onFilterChange,
   onReveal,
   onSteal,
+  onPreview,
+  showAllCountries = false,
+  onToggleAllCountries,
 }) {
   const participantMap = new Map(participants.map((participant) => [participant.id, participant]));
   const currentParticipant = currentParticipantId
@@ -19,6 +22,11 @@ export function GiftGrid({
   const blockedGiftId = currentParticipantId ? stealBlocks?.[currentParticipantId] : null;
   const hasFilters = filters.length > 0;
   const hasGifts = gifts.length > 0;
+
+  const currentCountryName = currentParticipant?.country;
+  const scopeButtonLabel = showAllCountries
+    ? (currentCountryName ? `View ${currentCountryName} gifts` : 'View current country')
+    : 'View all countries';
 
   return (
     <div className="panel gift-panel">
@@ -33,27 +41,36 @@ export function GiftGrid({
             </span>
           )}
         </div>
-        {hasFilters && (
-          <div className="gift-filter-group" role="group" aria-label="Gift filters">
-            {filters.map((option) => {
-              const isActive = option.value === activeFilter;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`gift-filter-chip${isActive ? ' active' : ''}`}
-                  onClick={() => {
-                    if (!isActive) {
-                      onFilterChange?.(option.value);
-                    }
-                  }}
-                  aria-pressed={isActive}
+        {(onToggleAllCountries || hasFilters) && (
+          <div className="gift-header-tools">
+            {onToggleAllCountries && (
+              <button
+                type="button"
+                className={`gift-scope-toggle${showAllCountries ? ' active' : ''}`}
+                onClick={onToggleAllCountries}
+                aria-pressed={showAllCountries}
+                title={showAllCountries ? 'Switch back to current country gifts' : 'View gifts from all countries'}
+              >
+                <span className="icon" aria-hidden="true">🌍</span>
+                <span className="text">{scopeButtonLabel}</span>
+              </button>
+            )}
+            {hasFilters && (
+              <label className="gift-filter-dropdown">
+                <span className="label">Filter</span>
+                <select
+                  value={activeFilter}
+                  onChange={(event) => onFilterChange?.(event.target.value)}
+                  aria-label="Filter visible gifts"
                 >
-                  <span className="label">{option.label}</span>
-                  <span className="count">{option.count}</span>
-                </button>
-              );
-            })}
+                  {filters.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label} ({option.count})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
         )}
       </div>
@@ -65,13 +82,22 @@ export function GiftGrid({
                 ? participantMap.get(gift.ownerParticipantId)
                 : null;
               const isCurrentGift = currentParticipantId && gift.ownerParticipantId === currentParticipantId;
-              const canReveal = mode === 'turn' && !gift.revealed && Boolean(currentParticipantId);
+              const isCrossCountryView =
+                showAllCountries &&
+                currentParticipant &&
+                gift.country !== currentParticipant.country;
+              const canReveal =
+                !isCrossCountryView &&
+                mode === 'turn' &&
+                !gift.revealed &&
+                Boolean(currentParticipantId);
               const isStealBlocked = Boolean(
                 blockedGiftId &&
                 gift.id &&
                 gift.id === blockedGiftId
               );
               const canSteal =
+                !isCrossCountryView &&
                 (mode === 'turn' || mode === 'swap') &&
                 gift.revealed &&
                 !gift.locked &&
@@ -81,6 +107,11 @@ export function GiftGrid({
 
               const revealLabel = gift.revealed ? 'Revealed' : 'Unwrap gift';
               const stealLabel = mode === 'swap' ? 'Swap for this gift' : 'Steal gift';
+              const stealDisabledReason = isCrossCountryView
+                ? "Select gifts from the current participant's country in this view."
+                : isStealBlocked
+                ? 'Cannot steal back immediately'
+                : undefined;
 
               return (
                 <GiftCard
@@ -91,12 +122,13 @@ export function GiftGrid({
                   canSteal={canSteal}
                   onReveal={onReveal}
                   onSteal={onSteal}
+                  onPreview={onPreview}
                   revealLabel={revealLabel}
                   stealLabel={stealLabel}
-                  showReveal={mode === 'turn'}
-                  showSteal={mode === 'turn' || mode === 'swap'}
+                  showReveal={!isCrossCountryView && mode === 'turn'}
+                  showSteal={!isCrossCountryView && (mode === 'turn' || mode === 'swap')}
                   isCurrentParticipantGift={isCurrentGift}
-                  stealDisabledReason={isStealBlocked ? 'Cannot steal back immediately' : undefined}
+                  stealDisabledReason={stealDisabledReason}
                 />
               );
             })}

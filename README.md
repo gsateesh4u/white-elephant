@@ -46,6 +46,7 @@ npm run build
 - Automatic turn hand-offs on steals and passes.
 - Endless swap phase after the first round until a host ends the game or every gift is locked.
 - Animated overlays and sound cues for shuffles, reveals, steals, and passes.
+- Built-in voice host that welcomes the room, explains the rules, and narrates every turn (uses the browser Speech Synthesis API).
 - In-memory reset endpoint to start fresh in seconds.
 
 ## Useful API routes
