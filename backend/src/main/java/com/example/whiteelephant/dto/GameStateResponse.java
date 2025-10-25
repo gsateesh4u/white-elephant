@@ -21,6 +21,9 @@ public class GameStateResponse {
     private final boolean finalSwapUsed;
     private final boolean swapModeActive;
     private final String firstParticipantId;
+    private final List<String> countrySequence;
+    private final List<String> completedCountries;
+    private final String currentCountry;
 
     private GameStateResponse(List<ParticipantView> participants,
                               List<GiftView> gifts,
@@ -33,7 +36,10 @@ public class GameStateResponse {
                               boolean finalSwapAvailable,
                               boolean finalSwapUsed,
                               boolean swapModeActive,
-                              String firstParticipantId) {
+                              String firstParticipantId,
+                              List<String> countrySequence,
+                              List<String> completedCountries,
+                              String currentCountry) {
         this.participants = participants;
         this.gifts = gifts;
         this.upcomingTurnOrder = upcomingTurnOrder;
@@ -46,11 +52,16 @@ public class GameStateResponse {
         this.finalSwapUsed = finalSwapUsed;
         this.swapModeActive = swapModeActive;
         this.firstParticipantId = firstParticipantId;
+        this.countrySequence = countrySequence;
+        this.completedCountries = completedCountries;
+        this.currentCountry = currentCountry;
     }
 
     public static GameStateResponse from(GameState state) {
-        List<ParticipantView> participants = state.getParticipants().stream()
-                .map(ParticipantView::from)
+        List<Participant> participantEntities = state.getParticipants();
+        List<ParticipantView> participants = java.util.stream.IntStream
+                .range(0, participantEntities.size())
+                .mapToObj(index -> ParticipantView.from(participantEntities.get(index), index + 1))
                 .collect(Collectors.toList());
 
         List<GiftView> gifts = state.getGifts().stream()
@@ -73,7 +84,10 @@ public class GameStateResponse {
                 state.isFinalSwapAvailable(),
                 state.isFinalSwapUsed(),
                 state.isSwapModeActive(),
-                state.getFirstParticipantId()
+                state.getFirstParticipantId(),
+                List.copyOf(state.getCountrySequence()),
+                List.copyOf(state.getCompletedCountries()),
+                state.getCurrentCountry()
         );
     }
 
@@ -125,28 +139,43 @@ public class GameStateResponse {
         return firstParticipantId;
     }
 
+    public List<String> getCountrySequence() {
+        return countrySequence;
+    }
+
+    public List<String> getCompletedCountries() {
+        return completedCountries;
+    }
+
+    public String getCurrentCountry() {
+        return currentCountry;
+    }
+
     public static class ParticipantView {
         private final String id;
         private final String name;
         private final String photoUrl;
         private final String country;
         private final String currentGiftId;
+        private final int playOrder;
 
-        private ParticipantView(String id, String name, String photoUrl, String country, String currentGiftId) {
+        private ParticipantView(String id, String name, String photoUrl, String country, String currentGiftId, int playOrder) {
             this.id = id;
             this.name = name;
             this.photoUrl = photoUrl;
             this.country = country;
             this.currentGiftId = currentGiftId;
+            this.playOrder = playOrder;
         }
 
-        public static ParticipantView from(Participant participant) {
+        public static ParticipantView from(Participant participant, int playOrder) {
             return new ParticipantView(
                     participant.getId(),
                     participant.getName(),
                     participant.getPhotoUrl(),
                     participant.getCountry(),
-                    participant.getCurrentGiftId()
+                    participant.getCurrentGiftId(),
+                    playOrder
             );
         }
 
@@ -169,15 +198,22 @@ public class GameStateResponse {
         public String getCurrentGiftId() {
             return currentGiftId;
         }
+
+        public int getPlayOrder() {
+            return playOrder;
+        }
     }
 
     public static class GiftView {
         private final String id;
         private final String name;
         private final String description;
+        private final String url;
+        private final List<String> imageUrls;
         private final String imageUrl;
         private final boolean revealed;
-        private final String ownerParticipantId;
+        private final String originalOwnerParticipantId;
+        private final String winnerParticipantId;
         private final String country;
         private final int timesStolen;
         private final boolean locked;
@@ -185,35 +221,58 @@ public class GameStateResponse {
         private GiftView(String id,
                          String name,
                          String description,
+                         String url,
+                         List<String> imageUrls,
                          String imageUrl,
                          boolean revealed,
-                         String ownerParticipantId,
+                         String originalOwnerParticipantId,
+                         String winnerParticipantId,
                          String country,
                          int timesStolen,
                          boolean locked) {
             this.id = id;
             this.name = name;
             this.description = description;
+            this.url = url;
+            this.imageUrls = imageUrls;
             this.imageUrl = imageUrl;
             this.revealed = revealed;
-            this.ownerParticipantId = ownerParticipantId;
+            this.originalOwnerParticipantId = originalOwnerParticipantId;
+            this.winnerParticipantId = winnerParticipantId;
             this.country = country;
             this.timesStolen = timesStolen;
             this.locked = locked;
         }
 
         public static GiftView from(Gift gift) {
+            List<String> proxyImageUrls = buildProxyUrls(gift);
+            String primaryProxyUrl = proxyImageUrls.isEmpty() ? null : proxyImageUrls.get(0);
+
             return new GiftView(
                     gift.getId(),
                     gift.getName(),
                     gift.getDescription(),
-                    gift.getImageUrl(),
+                    gift.getUrl(),
+                    proxyImageUrls,
+                    primaryProxyUrl,
                     gift.isRevealed(),
-                    gift.getOwnerParticipantId(),
+                    gift.getOriginalOwnerParticipantId(),
+                    gift.getWinnerParticipantId(),
                     gift.getCountry(),
                     gift.getTimesStolen(),
                     gift.isLocked()
             );
+        }
+
+        private static List<String> buildProxyUrls(Gift gift) {
+            List<String> originals = gift.getImageUrls();
+            if (originals == null || originals.isEmpty()) {
+                return List.of();
+            }
+            String giftId = gift.getId();
+            return java.util.stream.IntStream.range(0, originals.size())
+                    .mapToObj(index -> "/api/gifts/" + giftId + "/images/" + index)
+                    .collect(java.util.stream.Collectors.toList());
         }
 
         public String getId() {
@@ -228,6 +287,14 @@ public class GameStateResponse {
             return description;
         }
 
+        public String getUrl() {
+            return url;
+        }
+
+        public List<String> getImageUrls() {
+            return imageUrls;
+        }
+
         public String getImageUrl() {
             return imageUrl;
         }
@@ -236,8 +303,12 @@ public class GameStateResponse {
             return revealed;
         }
 
-        public String getOwnerParticipantId() {
-            return ownerParticipantId;
+        public String getOriginalOwnerParticipantId() {
+            return originalOwnerParticipantId;
+        }
+
+        public String getWinnerParticipantId() {
+            return winnerParticipantId;
         }
 
         public String getCountry() {
@@ -251,6 +322,7 @@ public class GameStateResponse {
         public boolean isLocked() {
             return locked;
         }
+
     }
 }
 

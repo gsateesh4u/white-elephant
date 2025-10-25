@@ -39,6 +39,16 @@ For a production build:
 npm run build
 ```
 
+### Participant live view
+
+Share `http://localhost:5173/participants` with players so they can track the current turn, view revealed gifts, and preview details without needing host credentials. The page refreshes automatically every few seconds and exposes no controls that can change the game state.
+
+Players can enter the participant code the host shares (or append `?participant=<participant-id>` to the URL) to highlight the gift they brought and see where it sits in the lineup so they know to avoid it during their turn.
+
+### Host gift summary
+
+Once the game ends, the host can visit `http://localhost:5173/summary` (host login required) to download-ready table of every gift, the link that was shared for it, the participant who brought it, and who took it home. The summary stays hidden until the host ends the game.
+
 ## Gameplay highlights
 
 - Shuffle the participant order before the first turn.

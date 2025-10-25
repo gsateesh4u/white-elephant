@@ -33,6 +33,7 @@
               <img src={participant.photoUrl} alt={participant.name} />
               <div>
                 <div className="participant-name">
+                  <span className="participant-order-badge">#{participant.playOrder}</span>
                   {participant.name}
                   {isFirst && <span className="badge soft">#1</span>}
                 </div>

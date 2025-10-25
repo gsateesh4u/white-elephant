@@ -8,6 +8,7 @@ import {
   unwrapGift,
   endGame,
   passTurn,
+  finishCountrySwap,
 } from './api/client.js';
 import { LoginForm } from './components/LoginForm.jsx';
 import { ParticipantList } from './components/ParticipantList.jsx';
@@ -18,10 +19,11 @@ import { ActionOverlay } from './components/ActionOverlay.jsx';
 import { GiftPreviewDialog } from './components/GiftPreviewDialog.jsx';
 import { useCelebration } from './hooks/useCelebration.js';
 import { useHostNarrator } from './hooks/useHostNarrator.js';
-
-const LOCAL_STORAGE_TOKEN_KEY = 'white-elephant.hostToken';
-const LOCAL_STORAGE_HOST_NAME = 'white-elephant.hostName';
-const LOCAL_STORAGE_VOICE = 'white-elephant.voiceEnabled';
+import {
+  LOCAL_STORAGE_HOST_NAME,
+  LOCAL_STORAGE_TOKEN_KEY,
+  LOCAL_STORAGE_VOICE,
+} from './constants.js';
 
 const createDefaultState = () => ({
   participants: [],
@@ -60,6 +62,7 @@ export default function App() {
     return stored === null ? true : stored === 'true';
   });
   const celebration = useCelebration();
+  const confirm = useConfirm();
   const previousStateRef = useRef();
   const overlayTimeoutRef = useRef(null);
   const placeholderStateRef = useRef(createDefaultState());
@@ -315,9 +318,9 @@ export default function App() {
         setError('Host login required for that action.');
         return;
       }
-      handleAction(() => shuffleParticipants(host.token), 'shuffle');
+      confirm('Shuffle participant order?', () => handleAction(() => shuffleParticipants(host.token), 'shuffle'));
     },
-    [handleAction, host, setError]
+    [handleAction, host, setError, confirm]
   );
 
   const handleReset = () => {
@@ -327,6 +330,14 @@ export default function App() {
   const handleEnd = () => {
     handleAction(() => endGame(host.token));
   };
+
+    const handleFinishCountrySwap = () => {
+      if (!host?.token) {
+        setError('Host login required for that action.');
+        return;
+      }
+      confirm('Lock gifts for this country?', () => handleAction(() => finishCountrySwap(host.token)));
+    };
 
   const canShuffle =
     !gameState.gameStarted &&
@@ -343,6 +354,7 @@ export default function App() {
   );
 
   const currentCountry = currentParticipant?.country;
+  const activeSwapCountry = displayState.currentCountry || null;
   const eligibleGifts = useMemo(() => {
     const giftsList = displayState.gifts || [];
     if (!currentCountry) {
@@ -357,6 +369,14 @@ export default function App() {
     }
     return eligibleGifts;
   }, [showAllCountries, displayState.gifts, eligibleGifts]);
+
+  const giftPositions = useMemo(() => {
+    const map = new Map();
+    (displayState.gifts || []).forEach((gift, index) => {
+      map.set(gift.id, index + 1);
+    });
+    return map;
+  }, [displayState.gifts]);
 
   const giftFilterOptions = useMemo(() => {
     const revealed = visibleGifts.filter((gift) => gift.revealed);
@@ -399,18 +419,19 @@ export default function App() {
   }
 
   let previewOwner = null;
-  if (previewGift?.ownerParticipantId) {
+  if (previewGift?.winnerParticipantId) {
     previewOwner =
       displayState.participants.find(
-        (participant) => participant.id === previewGift.ownerParticipantId
+        (participant) => participant.id === previewGift.winnerParticipantId
       ) ||
       gameState?.participants?.find(
-        (participant) => participant.id === previewGift.ownerParticipantId
+        (participant) => participant.id === previewGift.winnerParticipantId
       ) ||
       null;
   }
 
   const currentParticipantName = currentParticipant ? currentParticipant.name : 'Awaiting next participant';
+  const currentParticipantCountry = currentParticipant?.country;
 
   useHostNarrator({
     host,
@@ -428,7 +449,9 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <>
+      <ConfirmationDialog dialog={confirmationDialog} />
+      <div className="app">
       <header className="topbar">
         <div>
           <h1>White Elephant Control Room</h1>
@@ -436,7 +459,10 @@ export default function App() {
         </div>
         <div className="topbar-status">
           <span className="topbar-status-label">Current participant</span>
-          <span className="topbar-status-value">{currentParticipantName}</span>
+          <span className="topbar-status-value">
+            {currentParticipantName}
+            {currentParticipantCountry ? ` · ${currentParticipantCountry}` : ''}
+          </span>
         </div>
         <div className="topbar-actions">
           <button
@@ -489,8 +515,9 @@ export default function App() {
           {swapModeActive && !displayState.gameCompleted && currentParticipant && (
             <FinalSwapPanel
               currentParticipant={currentParticipant}
+              countryName={activeSwapCountry}
               onPass={handlePass}
-              onEnd={handleEnd}
+              onEnd={handleFinishCountrySwap}
             />
           )}
         </div>
@@ -510,11 +537,13 @@ export default function App() {
             filters={giftFilterOptions}
             activeFilter={giftFilter}
             onFilterChange={setGiftFilter}
+            giftPositions={giftPositions}
           />
         </div>
       </main>
       <GiftPreviewDialog gift={previewGift} owner={previewOwner} onClose={handleClosePreview} />
-    </div>
+      </div>
+    </>
   );
 }
 

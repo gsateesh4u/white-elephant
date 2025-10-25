@@ -14,6 +14,9 @@ export function GiftGrid({
   onPreview,
   showAllCountries = false,
   onToggleAllCountries,
+  readonly = false,
+  highlightGiftIds = null,
+  giftPositions = null,
 }) {
   const participantMap = new Map(participants.map((participant) => [participant.id, participant]));
   const currentParticipant = currentParticipantId
@@ -27,6 +30,7 @@ export function GiftGrid({
   const scopeButtonLabel = showAllCountries
     ? (currentCountryName ? `View ${currentCountryName} gifts` : 'View current country')
     : 'View all countries';
+  const allowInteractions = !readonly;
 
   return (
     <div className="panel gift-panel">
@@ -77,16 +81,17 @@ export function GiftGrid({
       <div className="gift-grid-scroll">
         {hasGifts ? (
           <div className="gift-grid">
-            {gifts.map((gift) => {
-              const owner = gift.ownerParticipantId
-                ? participantMap.get(gift.ownerParticipantId)
+            {gifts.map((gift, index) => {
+              const owner = gift.winnerParticipantId
+                ? participantMap.get(gift.winnerParticipantId)
                 : null;
-              const isCurrentGift = currentParticipantId && gift.ownerParticipantId === currentParticipantId;
+              const isCurrentGift = currentParticipantId && gift.winnerParticipantId === currentParticipantId;
               const isCrossCountryView =
                 showAllCountries &&
                 currentParticipant &&
                 gift.country !== currentParticipant.country;
               const canReveal =
+                allowInteractions &&
                 !isCrossCountryView &&
                 mode === 'turn' &&
                 !gift.revealed &&
@@ -97,12 +102,13 @@ export function GiftGrid({
                 gift.id === blockedGiftId
               );
               const canSteal =
+                allowInteractions &&
                 !isCrossCountryView &&
                 (mode === 'turn' || mode === 'swap') &&
                 gift.revealed &&
                 !gift.locked &&
-                gift.ownerParticipantId &&
-                gift.ownerParticipantId !== currentParticipantId &&
+                gift.winnerParticipantId &&
+                gift.winnerParticipantId !== currentParticipantId &&
                 !isStealBlocked;
 
               const revealLabel = gift.revealed ? 'Revealed' : 'Unwrap gift';
@@ -112,6 +118,16 @@ export function GiftGrid({
                 : isStealBlocked
                 ? 'Cannot steal back immediately'
                 : undefined;
+              const revealHandler = allowInteractions ? onReveal : undefined;
+              const stealHandler = allowInteractions ? onSteal : undefined;
+              const isHighlighted =
+                (Array.isArray(highlightGiftIds) && highlightGiftIds.includes(gift.id)) ||
+                (highlightGiftIds instanceof Set && highlightGiftIds.has(gift.id)) ||
+                false;
+              const sequenceNumber =
+                (giftPositions instanceof Map && giftPositions.get(gift.id)) ||
+                (giftPositions && giftPositions[gift.id]) ||
+                index + 1;
 
               return (
                 <GiftCard
@@ -120,15 +136,21 @@ export function GiftGrid({
                   owner={owner}
                   canReveal={canReveal}
                   canSteal={canSteal}
-                  onReveal={onReveal}
-                  onSteal={onSteal}
+                  onReveal={revealHandler}
+                  onSteal={stealHandler}
                   onPreview={onPreview}
                   revealLabel={revealLabel}
                   stealLabel={stealLabel}
-                  showReveal={!isCrossCountryView && mode === 'turn'}
-                  showSteal={!isCrossCountryView && (mode === 'turn' || mode === 'swap')}
+                  showReveal={
+                    allowInteractions && !isCrossCountryView && mode === 'turn'
+                  }
+                  showSteal={
+                    allowInteractions && !isCrossCountryView && (mode === 'turn' || mode === 'swap')
+                  }
                   isCurrentParticipantGift={isCurrentGift}
                   stealDisabledReason={stealDisabledReason}
+                  isHighlighted={isHighlighted}
+                  sequenceNumber={sequenceNumber}
                 />
               );
             })}

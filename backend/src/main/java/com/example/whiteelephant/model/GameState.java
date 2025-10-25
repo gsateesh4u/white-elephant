@@ -11,7 +11,11 @@ import java.util.Optional;
 public class GameState {
     private final List<Participant> participants = new ArrayList<>();
     private final List<Gift> gifts = new ArrayList<>();
+    private final List<String> countrySequence = new ArrayList<>();
+    private final List<String> completedCountries = new ArrayList<>();
     private final Deque<String> turnQueue = new ArrayDeque<>();
+    private final Deque<String> swapQueue = new ArrayDeque<>();
+    private final Deque<String> pendingSwapCountries = new ArrayDeque<>();
     private final List<String> completedTurnOrder = new ArrayList<>();
     private final Map<String, String> immediateStealBlocks = new HashMap<>();
     private final Map<String, Integer> giftSwapCounts = new HashMap<>();
@@ -22,6 +26,7 @@ public class GameState {
     private boolean swapModeActive;
     private String firstParticipantId;
     private String currentParticipantId;
+    private String currentCountry;
 
     public List<Participant> getParticipants() {
         return participants;
@@ -31,8 +36,24 @@ public class GameState {
         return gifts;
     }
 
+    public List<String> getCountrySequence() {
+        return countrySequence;
+    }
+
+    public List<String> getCompletedCountries() {
+        return completedCountries;
+    }
+
     public Deque<String> getTurnQueue() {
         return turnQueue;
+    }
+
+    public Deque<String> getSwapQueue() {
+        return swapQueue;
+    }
+
+    public Deque<String> getPendingSwapCountries() {
+        return pendingSwapCountries;
     }
 
     public List<String> getCompletedTurnOrder() {
@@ -102,6 +123,15 @@ public class GameState {
     public void setCurrentParticipantId(String currentParticipantId) {
         this.currentParticipantId = currentParticipantId;
     }
+
+    public String getCurrentCountry() {
+        return currentCountry;
+    }
+
+    public void setCurrentCountry(String currentCountry) {
+        this.currentCountry = currentCountry;
+    }
+
 
     public Optional<Participant> findParticipant(String participantId) {
         return participants.stream().filter(p -> p.getId().equals(participantId)).findFirst();

@@ -1,4 +1,7 @@
-﻿export function GiftCard({
+const GIFT_ICON = String.fromCodePoint(0x1f381);
+const LOCK_ICON = String.fromCodePoint(0x1f512);
+
+export function GiftCard({
   gift,
   owner,
   canReveal,
@@ -12,7 +15,10 @@
   showReveal = true,
   showSteal = true,
   stealDisabledReason,
+  isHighlighted = false,
+  sequenceNumber = null,
 }) {
+  const primaryImage = gift?.imageUrls && gift.imageUrls.length > 0 ? gift.imageUrls[0] : gift?.imageUrl;
   const statusLabel = gift.revealed
     ? owner
       ? `Owned by ${owner.name}`
@@ -20,16 +26,26 @@
     : 'Wrapped';
 
   return (
-    <div className={`gift-card${gift.revealed ? ' revealed' : ''}${gift.locked ? ' locked' : ''}`}>
+    <div
+      className={`gift-card${gift.revealed ? ' revealed' : ''}${
+        gift.locked ? ' locked' : ''
+      }${isHighlighted ? ' highlighted' : ''}`}
+    >
+      {sequenceNumber != null && (
+        <div className="gift-card-index" aria-hidden="true">
+          #{sequenceNumber}
+        </div>
+      )}
+      {sequenceNumber != null && (
+        <span className="sr-only">Gift number {sequenceNumber}.</span>
+      )}
       <div className="gift-card-content">
         <div className="gift-image">
           {gift.revealed ? (
-            <img src={gift.imageUrl} alt={gift.name} />
+            <img src={primaryImage} alt={gift.name} />
           ) : (
             <div className="wrapped">
-              <span role="img" aria-label="wrapped gift">
-                🎁
-              </span>
+              <span role="img" aria-label="wrapped gift">{GIFT_ICON}</span>
             </div>
           )}
           {gift.revealed && onPreview && (
@@ -45,7 +61,7 @@
               </svg>
             </button>
           )}
-          {gift.locked && <div className="gift-lock">🔒</div>}
+          {gift.locked && <div className="gift-lock">{LOCK_ICON}</div>}
         </div>
         <div className="gift-info">
           <h3>{gift.revealed ? gift.name : 'Mystery Gift'}</h3>
@@ -55,7 +71,7 @@
           <div className="gift-meta">
             <span>{statusLabel}</span>
             {gift.timesStolen > 0 && (
-              <span className="badge soft">Stolen {gift.timesStolen}×</span>
+              <span className="badge soft">Stolen {gift.timesStolen}x</span>
             )}
             {isCurrentParticipantGift && !gift.locked && (
               <span className="badge">At risk!</span>
@@ -67,7 +83,7 @@
         {showReveal && (
           <button
             className="primary"
-            onClick={() => onReveal(gift)}
+            onClick={() => onReveal?.(gift)}
             disabled={!canReveal}
           >
             {revealLabel}
@@ -76,7 +92,7 @@
         {showSteal && (
           <button
             className="secondary"
-            onClick={() => onSteal(gift)}
+            onClick={() => onSteal?.(gift)}
             disabled={!canSteal}
             title={stealDisabledReason || undefined}
           >
@@ -87,4 +103,3 @@
     </div>
   );
 }
-

@@ -55,6 +55,11 @@ public class GameController {
         return gameService.endGame(token);
     }
 
+    @PostMapping("/swap/end")
+    public GameStateResponse finishSwap(@RequestHeader("X-Host-Token") String token) {
+        return gameService.finishCurrentCountrySwap(token);
+    }
+
     @PostMapping("/reset")
     public GameStateResponse reset(@RequestHeader("X-Host-Token") String token) {
         return gameService.resetGame(token);

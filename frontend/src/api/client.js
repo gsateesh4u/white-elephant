@@ -70,3 +70,7 @@ export function endGame(token) {
 export function resetGame(token) {
   return apiFetch('/game/reset', { method: 'POST', token });
 }
+
+export function finishCountrySwap(token) {
+  return apiFetch('/game/swap/end', { method: 'POST', token });
+}
