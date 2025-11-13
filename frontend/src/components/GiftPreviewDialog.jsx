@@ -1,17 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 
 export function GiftPreviewDialog({ gift, owner, onClose }) {
-  if (!gift) {
-    return null;
-  }
-
-  const titleId = `gift-preview-${gift.id}`;
+  const giftId = gift?.id ?? 'preview';
+  const titleId = `gift-preview-${giftId}`;
 
   const images = useMemo(() => {
-    if (Array.isArray(gift.imageUrls) && gift.imageUrls.length > 0) {
+    if (gift?.imageUrls && gift.imageUrls.length > 0) {
       return gift.imageUrls;
     }
-    if (gift.imageUrl) {
+    if (gift?.imageUrl) {
       return [gift.imageUrl];
     }
     return [];
@@ -22,6 +19,10 @@ export function GiftPreviewDialog({ gift, owner, onClose }) {
   useEffect(() => {
     setActiveIndex(0);
   }, [gift?.id]);
+
+  if (!gift) {
+    return null;
+  }
 
   const totalImages = images.length;
   const hasCarousel = totalImages > 1;

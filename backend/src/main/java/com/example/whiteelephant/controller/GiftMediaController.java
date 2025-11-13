@@ -2,6 +2,8 @@ package com.example.whiteelephant.controller;
 
 import com.example.whiteelephant.model.Gift;
 import com.example.whiteelephant.service.GameService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -19,11 +21,16 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/gifts")
 public class GiftMediaController {
+    private static final Logger log = LoggerFactory.getLogger(GiftMediaController.class);
+    private static final byte[] PLACEHOLDER_IMAGE = Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII=");
+
     private final GameService gameService;
     private final RestTemplate restTemplate;
 
@@ -68,11 +75,17 @@ public class GiftMediaController {
             headers.setCacheControl("max-age=120");
 
             return new ResponseEntity<>(body, headers, HttpStatus.OK);
-        } catch (ResponseStatusException ex) {
-            throw ex;
         } catch (Exception ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Unable to retrieve gift image", ex);
+            log.warn("Unable to retrieve gift image {} for gift {}: {}", index, giftId, ex.getMessage());
+            return buildPlaceholderResponse();
         }
+    }
+
+    private ResponseEntity<byte[]> buildPlaceholderResponse() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_PNG);
+        headers.setCacheControl("max-age=60");
+        return new ResponseEntity<>(PLACEHOLDER_IMAGE, headers, HttpStatus.OK);
     }
 
     private ResponseEntity<byte[]> readImageEntity(ClientHttpResponse response) throws IOException {

@@ -23,8 +23,8 @@ public class GameController {
     }
 
     @GetMapping("/state")
-    public GameStateResponse state() {
-        return gameService.getState();
+    public GameStateResponse state(@RequestHeader(value = "X-Host-Token", required = false) String token) {
+        return gameService.getState(token);
     }
 
     @PostMapping("/shuffle")

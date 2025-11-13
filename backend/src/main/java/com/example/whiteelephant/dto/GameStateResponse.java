@@ -57,7 +57,7 @@ public class GameStateResponse {
         this.currentCountry = currentCountry;
     }
 
-    public static GameStateResponse from(GameState state) {
+    public static GameStateResponse from(GameState state, boolean includeSensitiveDetails) {
         List<Participant> participantEntities = state.getParticipants();
         List<ParticipantView> participants = java.util.stream.IntStream
                 .range(0, participantEntities.size())
@@ -65,7 +65,7 @@ public class GameStateResponse {
                 .collect(Collectors.toList());
 
         List<GiftView> gifts = state.getGifts().stream()
-                .map(GiftView::from)
+                .map(gift -> GiftView.from(gift, includeSensitiveDetails))
                 .collect(Collectors.toList());
 
         List<String> upcoming = state.getTurnQueue().stream().collect(Collectors.toList());
@@ -244,19 +244,21 @@ public class GameStateResponse {
             this.locked = locked;
         }
 
-        public static GiftView from(Gift gift) {
-            List<String> proxyImageUrls = buildProxyUrls(gift);
+        public static GiftView from(Gift gift, boolean includeSensitiveDetails) {
+            boolean showDetails = includeSensitiveDetails || gift.isRevealed();
+            boolean showOriginalOwner = includeSensitiveDetails;
+            List<String> proxyImageUrls = showDetails ? buildProxyUrls(gift) : List.of();
             String primaryProxyUrl = proxyImageUrls.isEmpty() ? null : proxyImageUrls.get(0);
 
             return new GiftView(
                     gift.getId(),
-                    gift.getName(),
-                    gift.getDescription(),
-                    gift.getUrl(),
+                    showDetails ? gift.getName() : null,
+                    showDetails ? gift.getDescription() : null,
+                    showDetails ? gift.getUrl() : null,
                     proxyImageUrls,
                     primaryProxyUrl,
                     gift.isRevealed(),
-                    gift.getOriginalOwnerParticipantId(),
+                    showOriginalOwner ? gift.getOriginalOwnerParticipantId() : null,
                     gift.getWinnerParticipantId(),
                     gift.getCountry(),
                     gift.getTimesStolen(),

@@ -17,8 +17,10 @@ import { TurnControls } from './components/TurnControls.jsx';
 import { FinalSwapPanel } from './components/FinalSwapPanel.jsx';
 import { ActionOverlay } from './components/ActionOverlay.jsx';
 import { GiftPreviewDialog } from './components/GiftPreviewDialog.jsx';
+import { ConfirmationDialog } from './components/ConfirmationDialog.jsx';
 import { useCelebration } from './hooks/useCelebration.js';
 import { useHostNarrator } from './hooks/useHostNarrator.js';
+import { useConfirm } from './hooks/useConfirm.js';
 import {
   LOCAL_STORAGE_HOST_NAME,
   LOCAL_STORAGE_TOKEN_KEY,
@@ -62,11 +64,12 @@ export default function App() {
     return stored === null ? true : stored === 'true';
   });
   const celebration = useCelebration();
-  const confirm = useConfirm();
+  const [confirmationDialog, confirm] = useConfirm();
   const previousStateRef = useRef();
   const overlayTimeoutRef = useRef(null);
   const placeholderStateRef = useRef(createDefaultState());
   const previousStateSnapshotRef = useRef();
+  const hostToken = host?.token || null;
 
 
   const applyState = useCallback(
@@ -96,14 +99,14 @@ export default function App() {
 
   const refreshState = useCallback(async () => {
     try {
-      const state = await fetchState();
+      const state = await fetchState(hostToken);
       applyState(state);
     } catch (err) {
       setError(err.message);
     } finally {
       setInitialLoading(false);
     }
-  }, [applyState]);
+  }, [applyState, hostToken]);
 
   useEffect(() => {
     refreshState();
@@ -219,6 +222,19 @@ export default function App() {
     [host, applyState, setError, setActiveOverlay]
   );
 
+  const confirmAction = useCallback(
+    (dialogOptions, action, overlayType) => {
+      confirm({
+        title: dialogOptions.title,
+        message: dialogOptions.message,
+        confirmLabel: dialogOptions.confirmLabel,
+        onConfirm: () => handleAction(action, overlayType),
+        onCancel: dialogOptions.onCancel,
+      });
+    },
+    [confirm, handleAction]
+  );
+
   const handleReveal = useCallback(
     (gift) => {
       if (!gameState.currentParticipantId) {
@@ -228,7 +244,12 @@ export default function App() {
         setError('Host login required for that action.');
         return;
       }
-      handleAction(
+      confirmAction(
+        {
+          title: 'Reveal gift?',
+          message: 'Reveal this mystery gift for everyone to see?',
+          confirmLabel: 'Reveal',
+        },
         () =>
           unwrapGift(host.token, {
             participantId: gameState.currentParticipantId,
@@ -237,7 +258,7 @@ export default function App() {
         'unwrap'
       );
     },
-    [handleAction, host, gameState.currentParticipantId, setError]
+    [confirmAction, host, gameState.currentParticipantId, setError]
   );
 
   const handleSteal = useCallback(
@@ -252,7 +273,15 @@ export default function App() {
       const isSwapMode = Boolean(
         gameState.swapModeActive || (gameState.finalSwapAvailable && !gameState.gameCompleted)
       );
-      handleAction(
+      const ownerName =
+        gameState.participants.find((participant) => participant.id === gift.winnerParticipantId)?.name ??
+        'its current owner';
+      confirmAction(
+        {
+          title: 'Steal gift?',
+          message: `Steal "${gift.name}" from ${ownerName}?`,
+          confirmLabel: 'Steal',
+        },
         () =>
           stealGift(host.token, {
             participantId: gameState.currentParticipantId,
@@ -261,7 +290,16 @@ export default function App() {
         isSwapMode ? 'swap' : 'steal'
       );
     },
-    [handleAction, host, gameState.swapModeActive, gameState.finalSwapAvailable, gameState.gameCompleted, gameState.currentParticipantId, setError]
+    [
+      confirmAction,
+      host,
+      gameState.swapModeActive,
+      gameState.finalSwapAvailable,
+      gameState.gameCompleted,
+      gameState.currentParticipantId,
+      gameState.participants,
+      setError,
+    ]
   );
 
   const handleToggleAllCountries = useCallback(() => {
@@ -301,7 +339,12 @@ export default function App() {
       if (!isSwapMode) {
         return;
       }
-      handleAction(
+      confirmAction(
+        {
+          title: 'Pass on swap?',
+          message: 'Pass without stealing a gift?',
+          confirmLabel: 'Pass',
+        },
         () =>
           passTurn(host.token, {
             participantId: gameState.currentParticipantId,
@@ -309,7 +352,15 @@ export default function App() {
         'swap'
       );
     },
-    [handleAction, host, gameState.swapModeActive, gameState.finalSwapAvailable, gameState.gameCompleted, gameState.currentParticipantId, setError]
+    [
+      confirmAction,
+      host,
+      gameState.swapModeActive,
+      gameState.finalSwapAvailable,
+      gameState.gameCompleted,
+      gameState.currentParticipantId,
+      setError,
+    ]
   );
 
   const handleShuffle = useCallback(
@@ -318,26 +369,63 @@ export default function App() {
         setError('Host login required for that action.');
         return;
       }
-      confirm('Shuffle participant order?', () => handleAction(() => shuffleParticipants(host.token), 'shuffle'));
+      confirmAction(
+        {
+          title: 'Shuffle participants?',
+          message: 'Randomize the play order before the game starts?',
+          confirmLabel: 'Shuffle',
+        },
+        () => shuffleParticipants(host.token),
+        'shuffle'
+      );
     },
-    [handleAction, host, setError, confirm]
+    [confirmAction, host, setError]
   );
 
-  const handleReset = () => {
-    handleAction(() => resetGame(host.token));
-  };
+  const handleReset = useCallback(() => {
+    if (!host?.token) {
+      setError('Host login required for that action.');
+      return;
+    }
+    confirmAction(
+      {
+        title: 'Reset game?',
+        message: 'This will erase the current game state and start over. Continue?',
+        confirmLabel: 'Reset',
+      },
+      () => resetGame(host.token)
+    );
+  }, [confirmAction, host, setError]);
 
-  const handleEnd = () => {
-    handleAction(() => endGame(host.token));
-  };
+  const handleEnd = useCallback(() => {
+    if (!host?.token) {
+      setError('Host login required for that action.');
+      return;
+    }
+    confirmAction(
+      {
+        title: 'End game?',
+        message: 'Lock in all gifts and end the game?',
+        confirmLabel: 'End game',
+      },
+      () => endGame(host.token)
+    );
+  }, [confirmAction, host, setError]);
 
-    const handleFinishCountrySwap = () => {
-      if (!host?.token) {
-        setError('Host login required for that action.');
-        return;
-      }
-      confirm('Lock gifts for this country?', () => handleAction(() => finishCountrySwap(host.token)));
-    };
+  const handleFinishCountrySwap = useCallback(() => {
+    if (!host?.token) {
+      setError('Host login required for that action.');
+      return;
+    }
+    confirmAction(
+      {
+        title: 'Lock this country?',
+        message: 'Finalize swaps for this country and move on?',
+        confirmLabel: 'Lock gifts',
+      },
+      () => finishCountrySwap(host.token)
+    );
+  }, [confirmAction, host, setError]);
 
   const canShuffle =
     !gameState.gameStarted &&

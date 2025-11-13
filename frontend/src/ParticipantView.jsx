@@ -210,7 +210,12 @@ export default function ParticipantViewApp() {
         if (a.locked !== b.locked) {
           return a.locked ? -1 : 1;
         }
-        return a.name.localeCompare(b.name);
+        const nameA = (a.name || '').toLowerCase();
+        const nameB = (b.name || '').toLowerCase();
+        if (nameA === nameB) {
+          return a.id.localeCompare(b.id);
+        }
+        return nameA.localeCompare(nameB);
       });
   }, [gifts]);
   const participantGiftPosition = useMemo(() => {

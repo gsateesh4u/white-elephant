@@ -98,6 +98,10 @@ public class Gift {
         this.timesStolen++;
     }
 
+    public void setTimesStolen(int timesStolen) {
+        this.timesStolen = Math.max(0, timesStolen);
+    }
+
     public boolean isLocked() {
         return timesStolen >= 2;
     }

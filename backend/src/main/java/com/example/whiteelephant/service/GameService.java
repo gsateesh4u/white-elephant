@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -104,13 +105,24 @@ public class GameService {
                     "Sculpt & Create Kit", "Ceramic sculpting starter bundle",
                     "https://m.media-amazon.com/images/I/71o6C7qb9WL._AC_SL1500_.jpg"));
 
+    private final AccessDatabaseService accessDatabaseService;
     private final SecureRandom random = new SecureRandom();
     private final GameState state = new GameState();
     private String activeHostToken;
 
+    public GameService(AccessDatabaseService accessDatabaseService) {
+        this.accessDatabaseService = Objects.requireNonNull(accessDatabaseService, "accessDatabaseService");
+    }
+
     @PostConstruct
     public synchronized void init() {
-        resetGameState();
+        Optional<GameState> persistedState = accessDatabaseService.loadPersistedState();
+        if (persistedState.isPresent()) {
+            applyPersistedState(persistedState.get());
+            activeHostToken = null;
+        } else {
+            resetGameState();
+        }
     }
 
     public synchronized void resetGameState() {
@@ -130,13 +142,81 @@ public class GameService {
         state.setFirstParticipantId(null);
         activeHostToken = null;
 
-        List<Participant> participants = seedParticipants();
-        participants.forEach(state.getParticipants()::add);
+        List<Participant> participants = loadOrSeedParticipants();
+        state.getParticipants().addAll(participants);
 
-        List<Gift> gifts = seedGifts(participants);
-        gifts.forEach(state.getGifts()::add);
+        List<Gift> gifts = loadOrSeedGifts(participants);
+        state.getGifts().addAll(gifts);
 
         initializeGlobalTurnOrder();
+        persistState();
+    }
+
+    private void applyPersistedState(GameState snapshot) {
+        state.getParticipants().clear();
+        state.getParticipants().addAll(snapshot.getParticipants());
+
+        state.getGifts().clear();
+        state.getGifts().addAll(snapshot.getGifts());
+
+        state.getTurnQueue().clear();
+        state.getTurnQueue().addAll(snapshot.getTurnQueue());
+
+        state.getSwapQueue().clear();
+        state.getSwapQueue().addAll(snapshot.getSwapQueue());
+
+        state.getPendingSwapCountries().clear();
+        state.getPendingSwapCountries().addAll(snapshot.getPendingSwapCountries());
+
+        state.getCompletedTurnOrder().clear();
+        state.getCompletedTurnOrder().addAll(snapshot.getCompletedTurnOrder());
+
+        state.getCountrySequence().clear();
+        state.getCountrySequence().addAll(snapshot.getCountrySequence());
+
+        state.getCompletedCountries().clear();
+        state.getCompletedCountries().addAll(snapshot.getCompletedCountries());
+
+        state.getImmediateStealBlocks().clear();
+        state.getImmediateStealBlocks().putAll(snapshot.getImmediateStealBlocks());
+
+        state.getGiftSwapCounts().clear();
+        state.getGiftSwapCounts().putAll(snapshot.getGiftSwapCounts());
+
+        state.setGameStarted(snapshot.isGameStarted());
+        state.setGameCompleted(snapshot.isGameCompleted());
+        state.setFinalSwapAvailable(snapshot.isFinalSwapAvailable());
+        state.setFinalSwapUsed(snapshot.isFinalSwapUsed());
+        state.setSwapModeActive(snapshot.isSwapModeActive());
+        state.setFirstParticipantId(snapshot.getFirstParticipantId());
+        state.setCurrentParticipantId(snapshot.getCurrentParticipantId());
+        state.setCurrentCountry(snapshot.getCurrentCountry());
+    }
+
+    private List<Participant> loadOrSeedParticipants() {
+        List<Participant> participants = accessDatabaseService.loadParticipants();
+        if (participants.isEmpty()) {
+            participants = seedParticipants();
+            accessDatabaseService.replaceParticipants(participants);
+        }
+        return participants;
+    }
+
+    private List<Gift> loadOrSeedGifts(List<Participant> participants) {
+        List<Gift> gifts = accessDatabaseService.loadGifts();
+        if (gifts.isEmpty()) {
+            gifts = seedGifts(participants);
+            accessDatabaseService.replaceGifts(gifts);
+        }
+        return gifts;
+    }
+
+    private GameStateResponse fullStateResponse() {
+        return GameStateResponse.from(state, true);
+    }
+
+    private void persistState() {
+        accessDatabaseService.saveGameState(state);
     }
 
     private List<Participant> seedParticipants() {
@@ -273,7 +353,9 @@ public class GameService {
 
     private static String generateStableId(String namespace, String... components) {
         String combined = namespace + ":" + String.join("|", components);
-        return UUID.nameUUIDFromBytes(combined.getBytes(StandardCharsets.UTF_8)).toString();
+        return UUID.nameUUIDFromBytes(combined.getBytes(StandardCharsets.UTF_8))
+                .toString()
+                .replace("-", "");
     }
 
     private static String toSlug(String value) {
@@ -301,8 +383,9 @@ public class GameService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    public synchronized GameStateResponse getState() {
-        return GameStateResponse.from(state);
+    public synchronized GameStateResponse getState(String token) {
+        boolean includeSensitiveDetails = isAuthorized(token);
+        return GameStateResponse.from(state, includeSensitiveDetails);
     }
 
     public synchronized GameStateResponse shuffleParticipants(String token) {
@@ -327,7 +410,8 @@ public class GameService {
         state.setFinalSwapUsed(false);
         state.setGameStarted(false);
         initializeGlobalTurnOrder();
-        return GameStateResponse.from(state);
+        persistState();
+        return fullStateResponse();
     }
 
     public synchronized GameStateResponse unwrapGift(String token, UnwrapRequest request) {
@@ -357,7 +441,8 @@ public class GameService {
         } else {
             maybeAutoFinishCurrentCountry();
         }
-        return GameStateResponse.from(state);
+        persistState();
+        return fullStateResponse();
     }
 
     public synchronized GameStateResponse stealGift(String token, StealRequest request) {
@@ -420,8 +505,10 @@ public class GameService {
         recordCompletedParticipant(current.getId());
         rotateQueueAfterSteal(previousOwner.getId());
         maybeAutoFinishCurrentCountry();
-        return GameStateResponse.from(state);
+        persistState();
+        return fullStateResponse();
     }
+
     public synchronized GameStateResponse passTurn(String token, PassTurnRequest request) {
         requireHostToken(token);
         ensureSwapModeActive();
@@ -429,19 +516,21 @@ public class GameService {
         state.getImmediateStealBlocks().remove(request.getParticipantId());
         passCurrentParticipant();
         maybeAutoFinishCurrentCountry();
-        return GameStateResponse.from(state);
+        persistState();
+        return fullStateResponse();
     }
 
     public synchronized GameStateResponse endGame(String token) {
         requireHostToken(token);
         finalizeGame();
-        return GameStateResponse.from(state);
+        persistState();
+        return fullStateResponse();
     }
 
     public synchronized GameStateResponse resetGame(String token) {
         requireHostToken(token);
         resetGameState();
-        return GameStateResponse.from(state);
+        return fullStateResponse();
     }
 
     public synchronized GameStateResponse finishCurrentCountrySwap(String token) {
@@ -450,7 +539,8 @@ public class GameService {
             concludeCurrentCountryPhase();
             tryFinalizeGameIfReady();
         }
-        return GameStateResponse.from(state);
+        persistState();
+        return fullStateResponse();
     }
 
     private void beginGameIfNeeded() {

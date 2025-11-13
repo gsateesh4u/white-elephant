@@ -24,19 +24,20 @@ export default function HostSummaryApp() {
   const [error, setError] = useState(null);
   const [loginError, setLoginError] = useState(null);
   const [loginLoading, setLoginLoading] = useState(false);
+  const hostToken = host?.token || null;
 
   const refreshState = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const state = await fetchState();
+      const state = await fetchState(hostToken);
       setGameState(state);
     } catch (err) {
       setError(err.message || 'Unable to load game state.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hostToken]);
 
   useEffect(() => {
     if (host) {

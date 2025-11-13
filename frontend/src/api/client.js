@@ -43,8 +43,8 @@ export function login(credentials) {
   return apiFetch('/host/login', { method: 'POST', body: credentials });
 }
 
-export function fetchState() {
-  return apiFetch('/game/state');
+export function fetchState(token) {
+  return apiFetch('/game/state', { token });
 }
 
 export function shuffleParticipants(token) {
