@@ -6,8 +6,14 @@ import HostSummaryApp from './HostSummary.jsx';
 import './styles.css';
 
 const path = window.location.pathname.toLowerCase();
-const isParticipantView = path === '/participants' || path.startsWith('/participants/');
-const isSummaryView = path === '/summary' || path.startsWith('/summary');
+const participantViewRoutes = ['/participants', '/participantview', '/participant-view'];
+const summaryRoutes = ['/summary'];
+const isParticipantView = participantViewRoutes.some(
+  (route) => path === route || path.startsWith(`${route}/`)
+);
+const isSummaryView = summaryRoutes.some(
+  (route) => path === route || path.startsWith(`${route}/`)
+);
 
 let RootComponent;
 if (isParticipantView) {

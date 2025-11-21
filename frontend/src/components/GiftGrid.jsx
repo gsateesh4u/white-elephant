@@ -17,6 +17,8 @@ export function GiftGrid({
   readonly = false,
   highlightGiftIds = null,
   giftPositions = null,
+  animatedRevealGiftIds = new Set(),
+  revealAnimationGif = null,
 }) {
   const participantMap = new Map(participants.map((participant) => [participant.id, participant]));
   const currentParticipant = currentParticipantId
@@ -112,7 +114,7 @@ export function GiftGrid({
                 !isStealBlocked;
 
               const revealLabel = gift.revealed ? 'Revealed' : 'Unwrap gift';
-              const stealLabel = mode === 'swap' ? 'Swap for this gift' : 'Steal gift';
+              const stealLabel = mode === 'swap' ? 'Swap Gift' : 'Steal gift';
               const stealDisabledReason = isCrossCountryView
                 ? "Select gifts from the current participant's country in this view."
                 : isStealBlocked
@@ -128,6 +130,12 @@ export function GiftGrid({
                 (giftPositions instanceof Map && giftPositions.get(gift.id)) ||
                 (giftPositions && giftPositions[gift.id]) ||
                 index + 1;
+              const isAnimatedReveal =
+                animatedRevealGiftIds instanceof Set
+                  ? animatedRevealGiftIds.has(gift.id)
+                  : Array.isArray(animatedRevealGiftIds)
+                    ? animatedRevealGiftIds.includes(gift.id)
+                    : false;
 
               return (
                 <GiftCard
@@ -151,6 +159,8 @@ export function GiftGrid({
                   stealDisabledReason={stealDisabledReason}
                   isHighlighted={isHighlighted}
                   sequenceNumber={sequenceNumber}
+                  showRevealAnimation={isAnimatedReveal}
+                  revealAnimationGif={revealAnimationGif}
                 />
               );
             })}

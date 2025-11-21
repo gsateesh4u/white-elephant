@@ -17,6 +17,8 @@ export function GiftCard({
   stealDisabledReason,
   isHighlighted = false,
   sequenceNumber = null,
+  showRevealAnimation = false,
+  revealAnimationGif = null,
 }) {
   const primaryImage = gift?.imageUrls && gift.imageUrls.length > 0 ? gift.imageUrls[0] : gift?.imageUrl;
   const statusLabel = gift.revealed
@@ -24,6 +26,7 @@ export function GiftCard({
       ? `Owned by ${owner.name}`
       : 'Revealed'
     : 'Wrapped';
+  const shouldShowAnimation = showRevealAnimation && gift.revealed && revealAnimationGif;
 
   return (
     <div
@@ -42,7 +45,11 @@ export function GiftCard({
       <div className="gift-card-content">
         <div className="gift-image">
           {gift.revealed ? (
-            <img src={primaryImage} alt={gift.name} />
+            shouldShowAnimation ? (
+              <img src={revealAnimationGif} alt="Unwrapping animation" />
+            ) : (
+              <img src={primaryImage} alt={gift.name} />
+            )
           ) : (
             <div className="wrapped">
               <span role="img" aria-label="wrapped gift">{GIFT_ICON}</span>
@@ -72,9 +79,6 @@ export function GiftCard({
             <span>{statusLabel}</span>
             {gift.timesStolen > 0 && (
               <span className="badge soft">Stolen {gift.timesStolen}x</span>
-            )}
-            {isCurrentParticipantGift && !gift.locked && (
-              <span className="badge">At risk!</span>
             )}
           </div>
         </div>

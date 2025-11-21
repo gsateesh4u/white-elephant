@@ -33,77 +33,78 @@ public class GameService {
     private static final String HOST_DISPLAY_NAME = "White Elephant Host";
     private static final int MAX_STEALS_PER_GIFT = 2;
     private static final int MAX_SWAPS_PER_GIFT = 2;
+    private static final String PLAYER_IMAGE_PREFIX = "/api/assets/players/";
 
     private record ParticipantGiftSeed(
             String participantName,
-            String photoUrl,
+            String photoPath,
             String country,
             String giftName,
             String giftDescription,
-            String giftPrimaryImageUrl) {
+            String giftImageBaseName) {
     }
 
     private static final List<ParticipantGiftSeed> PARTICIPANT_GIFT_SEEDS = List.of(
-            new ParticipantGiftSeed("Alex Johnson", "https://i.pravatar.cc/150?img=12", "US",
+            new ParticipantGiftSeed("Alex Johnson", PLAYER_IMAGE_PREFIX + "alex-johnson.png", "US",
                     "Aurora Mood Lamp", "Color-shifting LED mood lamp",
-                    "https://m.media-amazon.com/images/I/716OR2JzJxL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Sam Patel", "https://i.pravatar.cc/150?img=32", "India",
+                    "aurora-mood-lamp"),
+            new ParticipantGiftSeed("Sam Patel", PLAYER_IMAGE_PREFIX + "sam-patel.png", "India",
                     "Coffee Lab Kit", "Pour-over kit with specialty beans",
-                    "https://m.media-amazon.com/images/I/81F1U6Pp4PL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Maya Chen", "https://i.pravatar.cc/150?img=45", "US",
+                    "coffee-lab-kit"),
+            new ParticipantGiftSeed("Maya Chen", PLAYER_IMAGE_PREFIX + "maya-chen.png", "US",
                     "Game Night Crate", "Board game bundle with snacks",
-                    "https://m.media-amazon.com/images/I/91nVJtXfTCL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Lena Rivera", "https://i.pravatar.cc/150?img=18", "India",
+                    "game-night-crate"),
+            new ParticipantGiftSeed("Lena Rivera", PLAYER_IMAGE_PREFIX + "lena-rivera.png", "India",
                     "Cozy Knit Throw", "Weighted knit blanket",
-                    "https://m.media-amazon.com/images/I/71r5O-mcWbL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Omar Davis", "https://i.pravatar.cc/150?img=67", "US",
+                    "cozy-knit-throw"),
+            new ParticipantGiftSeed("Omar Davis", PLAYER_IMAGE_PREFIX + "omar-davis.png", "US",
                     "Mixology Flight", "Craft cocktail infusion set",
-                    "https://m.media-amazon.com/images/I/71spD+lNEIL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Tara Singh", "https://i.pravatar.cc/150?img=23", "India",
+                    "mixology-flight"),
+            new ParticipantGiftSeed("Tara Singh", PLAYER_IMAGE_PREFIX + "tara-singh.png", "India",
                     "Plant Buddy", "Self-watering plant terrarium",
-                    "https://m.media-amazon.com/images/I/61dwG6w7JgL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Noah Brooks", "https://i.pravatar.cc/150?img=41", "US",
+                    "plant-buddy"),
+            new ParticipantGiftSeed("Noah Brooks", PLAYER_IMAGE_PREFIX + "noah-brooks.png", "US",
                     "Smart Hydro Garden", "Countertop herb-growing system",
-                    "https://m.media-amazon.com/images/I/71qdj0pF0cL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Riley Kim", "https://i.pravatar.cc/150?img=16", "India",
+                    "smart-hydro-garden"),
+            new ParticipantGiftSeed("Riley Kim", PLAYER_IMAGE_PREFIX + "riley-kim.png", "India",
                     "Cold Brew Kit", "All-in-one cold brew set with beans",
-                    "https://m.media-amazon.com/images/I/71A7dPu+ZkL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Ivy Martinez", "https://i.pravatar.cc/150?img=54", "US",
+                    "cold-brew-kit"),
+            new ParticipantGiftSeed("Ivy Martinez", PLAYER_IMAGE_PREFIX + "ivy-martinez.png", "US",
                     "Chocolate Tour Box", "International artisan chocolate sampler",
-                    "https://m.media-amazon.com/images/I/71oG0WIC0dL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Zoe Thompson", "https://i.pravatar.cc/150?img=21", "India",
+                    "chocolate-tour-box"),
+            new ParticipantGiftSeed("Zoe Thompson", PLAYER_IMAGE_PREFIX + "zoe-thompson.png", "India",
                     "Movie Marathon Pack", "Projector-ready snack and film bundle",
-                    "https://m.media-amazon.com/images/I/81CzV6cRZBL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Chris Allen", "https://i.pravatar.cc/150?img=14", "US",
+                    "movie-marathon-pack"),
+            new ParticipantGiftSeed("Chris Allen", PLAYER_IMAGE_PREFIX + "chris-allen.png", "US",
                     "Campfire Comfort Kit", "Portable fire pit with s'mores set",
-                    "https://m.media-amazon.com/images/I/71bFu6PvxjL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Jordan Lee", "https://i.pravatar.cc/150?img=37", "India",
+                    "campfire-comfort-kit"),
+            new ParticipantGiftSeed("Jordan Lee", PLAYER_IMAGE_PREFIX + "jordan-lee.png", "India",
                     "Artisan Tea Flight", "Curated loose-leaf tasting collection",
-                    "https://m.media-amazon.com/images/I/81kLdZJcG1L._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Amelia Turner", "https://i.pravatar.cc/150?img=9", "US",
+                    "artisan-tea-flight"),
+            new ParticipantGiftSeed("Amelia Turner", PLAYER_IMAGE_PREFIX + "amelia-turner.png", "US",
                     "VR Escape Puzzle", "Immersive escape-room experience voucher",
-                    "https://m.media-amazon.com/images/I/71gZ-T2dpxL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Liam Walker", "https://i.pravatar.cc/150?img=28", "India",
+                    "vr-escape-puzzle"),
+            new ParticipantGiftSeed("Liam Walker", PLAYER_IMAGE_PREFIX + "liam-walker.png", "India",
                     "Chef's Toolkit", "Premium knives and prep gadgets",
-                    "https://m.media-amazon.com/images/I/71kAv0vkATL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Emma Hughes", "https://i.pravatar.cc/150?img=52", "US",
+                    "chefs-toolkit"),
+            new ParticipantGiftSeed("Emma Hughes", PLAYER_IMAGE_PREFIX + "emma-hughes.png", "US",
                     "Fitness Essentials Pack", "Resistance kit with smart jump rope",
-                    "https://m.media-amazon.com/images/I/71YamcexWTL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Harper Scott", "https://i.pravatar.cc/150?img=48", "India",
+                    "fitness-essentials-pack"),
+            new ParticipantGiftSeed("Harper Scott", PLAYER_IMAGE_PREFIX + "harper-scott.png", "India",
                     "Photo Journey Set", "Instant camera with travel book",
-                    "https://m.media-amazon.com/images/I/71PuQjkCh3L._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Nico Ramirez", "https://i.pravatar.cc/150?img=57", "US",
+                    "photo-journey-set"),
+            new ParticipantGiftSeed("Nico Ramirez", PLAYER_IMAGE_PREFIX + "nico-ramirez.png", "US",
                     "Music Lounge Bundle", "Bluetooth speaker and vinyl sampler",
-                    "https://m.media-amazon.com/images/I/71VQpP-rXGL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Sophia Bennett", "https://i.pravatar.cc/150?img=11", "India",
+                    "music-lounge-bundle"),
+            new ParticipantGiftSeed("Sophia Bennett", PLAYER_IMAGE_PREFIX + "sophia-bennett.png", "India",
                     "Spa Retreat Set", "Aromatherapy and plush robe",
-                    "https://m.media-amazon.com/images/I/71JjyKX1FHL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Owen Parker", "https://i.pravatar.cc/150?img=44", "US",
+                    "spa-retreat-set"),
+            new ParticipantGiftSeed("Owen Parker", PLAYER_IMAGE_PREFIX + "owen-parker.png", "US",
                     "Tech Toy Drone", "Compact camera drone with controller",
-                    "https://m.media-amazon.com/images/I/718R8rF4tOL._AC_SL1500_.jpg"),
-            new ParticipantGiftSeed("Lucas Nguyen", "https://i.pravatar.cc/150?img=35", "India",
+                    "tech-toy-drone"),
+            new ParticipantGiftSeed("Lucas Nguyen", PLAYER_IMAGE_PREFIX + "lucas-nguyen.png", "India",
                     "Sculpt & Create Kit", "Ceramic sculpting starter bundle",
-                    "https://m.media-amazon.com/images/I/71o6C7qb9WL._AC_SL1500_.jpg"));
+                    "sculpt-and-create-kit"));
 
     private final AccessDatabaseService accessDatabaseService;
     private final SecureRandom random = new SecureRandom();
@@ -222,9 +223,9 @@ public class GameService {
     private List<Participant> seedParticipants() {
         List<Participant> participants = new ArrayList<>(PARTICIPANT_GIFT_SEEDS.size());
         for (ParticipantGiftSeed seed : PARTICIPANT_GIFT_SEEDS) {
-            String participantId = generateStableId("participant", seed.participantName(), seed.photoUrl());
+            String participantId = generateStableId("participant", seed.participantName(), seed.photoPath());
             System.out.println("Generated participant ID: " + participantId + " for " + seed.participantName());
-            participants.add(new Participant(participantId, seed.participantName(), seed.photoUrl(), seed.country()));
+            participants.add(new Participant(participantId, seed.participantName(), seed.photoPath(), seed.country()));
         }
         return participants;
     }
@@ -234,7 +235,8 @@ public class GameService {
         for (int index = 0; index < PARTICIPANT_GIFT_SEEDS.size(); index++) {
             ParticipantGiftSeed seed = PARTICIPANT_GIFT_SEEDS.get(index);
             Participant participant = participants.get(index);
-            String giftId = generateStableId("gift", seed.giftName(), seed.giftPrimaryImageUrl());
+            List<String> imagePaths = buildLocalGiftImages(seed.giftImageBaseName());
+            String giftId = generateStableId("gift", seed.giftName(), imagePaths.isEmpty() ? "" : imagePaths.get(0));
             String productSlug = toSlug(seed.giftName());
             String productUrl = "https://gift-guide.example/" + productSlug;
             gifts.add(new Gift(
@@ -242,7 +244,7 @@ public class GameService {
                     seed.giftName(),
                     seed.giftDescription(),
                     productUrl,
-                    withAltImages(seed.giftPrimaryImageUrl()),
+                    imagePaths,
                     participant.getId(),
                     participant.getCountry()
             ));
@@ -250,12 +252,19 @@ public class GameService {
         return gifts;
     }
 
-    private List<String> withAltImages(String primaryUrl) {
+    private List<String> buildLocalGiftImages(String baseName) {
+        if (baseName == null || baseName.isBlank()) {
+            return List.of();
+        }
         return List.of(
-                primaryUrl,
-                primaryUrl + "&variant=1",
-                primaryUrl + "&variant=2"
+                giftImagePath(baseName, 1),
+                giftImagePath(baseName, 2),
+                giftImagePath(baseName, 3)
         );
+    }
+
+    private String giftImagePath(String baseName, int variant) {
+        return "/images/gifts/" + baseName + "-" + variant + ".png";
     }
 
     private void initializeGlobalTurnOrder() {

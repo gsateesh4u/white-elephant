@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchState } from './api/client.js';
 import { ParticipantList } from './components/ParticipantList.jsx';
 import { GiftGrid } from './components/GiftGrid.jsx';
 import { GiftPreviewDialog } from './components/GiftPreviewDialog.jsx';
+import { HolidayPopup } from './components/HolidayPopup.jsx';
+import {
+  ActionExperienceOverlay,
+  EXPERIENCE_CONFIG,
+} from './components/ActionExperienceOverlay.jsx';
+import { useHolidayMusic } from './hooks/useHolidayMusic.js';
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -49,6 +55,14 @@ export default function ParticipantViewApp() {
   const [giftFilter, setGiftFilter] = useState('all');
   const [participantCodeInput, setParticipantCodeInput] = useState(initialParticipantCode);
   const [participantCode, setParticipantCode] = useState(initialParticipantCode);
+  const [showHolidayPopup, setShowHolidayPopup] = useState(false);
+  const gameCompletedRef = useRef(false);
+  const { play: playHolidayMusic } = useHolidayMusic();
+  const [experienceType, setExperienceType] = useState(null);
+  const experienceTimeoutRef = useRef(null);
+  const [animatedRevealGiftIds, setAnimatedRevealGiftIds] = useState(() => new Set());
+  const revealAnimationTimersRef = useRef(new Map());
+  const previousGiftsRef = useRef(new Map());
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -70,6 +84,75 @@ export default function ParticipantViewApp() {
   const handleParticipantInputChange = useCallback((event) => {
     setParticipantCodeInput(event.target.value);
   }, []);
+
+  const showExperience = useCallback((experienceKey) => {
+    if (!experienceKey || !EXPERIENCE_CONFIG[experienceKey]) {
+      return;
+    }
+    if (experienceTimeoutRef.current) {
+      clearTimeout(experienceTimeoutRef.current);
+      experienceTimeoutRef.current = null;
+    }
+    setExperienceType(experienceKey);
+    experienceTimeoutRef.current = setTimeout(() => {
+      setExperienceType(null);
+      experienceTimeoutRef.current = null;
+    }, EXPERIENCE_CONFIG[experienceKey].durationMs);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (experienceTimeoutRef.current) {
+        clearTimeout(experienceTimeoutRef.current);
+        experienceTimeoutRef.current = null;
+      }
+      revealAnimationTimersRef.current.forEach((timer) => clearTimeout(timer));
+      revealAnimationTimersRef.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    const previousMap = previousGiftsRef.current;
+    const nextMap = new Map();
+    const newlyRevealed = [];
+    gifts.forEach((gift) => {
+      const previousGift = previousMap.get(gift.id);
+      if (previousGift && !previousGift.revealed && gift.revealed) {
+        newlyRevealed.push(gift.id);
+      }
+      nextMap.set(gift.id, gift);
+    });
+    previousGiftsRef.current = nextMap;
+    if (newlyRevealed.length === 0) {
+      return;
+    }
+    showExperience('unwrap');
+    newlyRevealed.forEach((giftId) => {
+      setAnimatedRevealGiftIds((current) => {
+        if (current.has(giftId)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.add(giftId);
+        return next;
+      });
+      if (revealAnimationTimersRef.current.has(giftId)) {
+        clearTimeout(revealAnimationTimersRef.current.get(giftId));
+      }
+      const timer = setTimeout(() => {
+        setAnimatedRevealGiftIds((current) => {
+          if (!current.has(giftId)) {
+            return current;
+          }
+          const next = new Set(current);
+          next.delete(giftId);
+          return next;
+        });
+        revealAnimationTimersRef.current.delete(giftId);
+      }, 5000);
+      revealAnimationTimersRef.current.set(giftId, timer);
+    });
+  }, [gifts, showExperience]);
 
   const handleParticipantLookup = useCallback(
     (event) => {
@@ -96,6 +179,10 @@ export default function ParticipantViewApp() {
           setGameState(next);
           setError(null);
           setLoading(false);
+          if (!gameCompletedRef.current && next.gameCompleted) {
+            setShowHolidayPopup(true);
+          }
+          gameCompletedRef.current = next.gameCompleted;
         }
       } catch (err) {
         if (!cancelled) {
@@ -304,9 +391,14 @@ export default function ParticipantViewApp() {
       </header>
 
       <div className="spectator-helper">
-        <h2>Check your gift position</h2>
+        <h2>
+          Check your gift position
+          <span className="helper-subtitle">Enter the code your host shared</span>
+        </h2>
         <form className="spectator-helper-form" onSubmit={handleParticipantLookup}>
-          <label htmlFor="participant-code">Enter the code your host shared</label>
+          <label htmlFor="participant-code" className="sr-only">
+            Participant code
+          </label>
           <div className="input-row">
             <input
               id="participant-code"
@@ -357,11 +449,7 @@ export default function ParticipantViewApp() {
               </>
             )}
           </div>
-        ) : (
-          <p className="muted">
-            Paste the personal participant code from your invite to highlight the gift you brought so you can avoid unwrapping it.
-          </p>
-        )}
+        ) : null}
       </div>
 
       {nextUpSummary && (
@@ -373,6 +461,7 @@ export default function ParticipantViewApp() {
 
       {error && <div className="toast error">{error}</div>}
       {loading && !error && <div className="toast info">Loading the latest game state...</div>}
+      <ActionExperienceOverlay type={experienceType} />
 
       <main className="layout spectator-layout">
         <div className="left-column">
@@ -406,11 +495,19 @@ export default function ParticipantViewApp() {
             readonly
             highlightGiftIds={highlightedGiftIds}
             giftPositions={giftPositions}
+            animatedRevealGiftIds={animatedRevealGiftIds}
+            revealAnimationGif={EXPERIENCE_CONFIG.unwrap.gif}
           />
         </div>
       </main>
 
       <GiftPreviewDialog gift={previewGift} owner={previewOwner} onClose={() => setPreviewGiftId(null)} />
+      {showHolidayPopup && (
+        <HolidayPopup
+          onClose={() => setShowHolidayPopup(false)}
+          onPlayMusic={playHolidayMusic}
+        />
+      )}
     </div>
   );
 }

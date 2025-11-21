@@ -2,6 +2,7 @@ package com.example.whiteelephant.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
@@ -14,5 +15,16 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .exposedHeaders("X-Host-Token")
                 .allowCredentials(true);
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/api/assets/players/**")
+                .addResourceLocations("classpath:/static/images/players/")
+                .setCachePeriod(3600);
+
+        registry.addResourceHandler("/api/assets/gifts/**")
+                .addResourceLocations("classpath:/static/images/gifts/")
+                .setCachePeriod(3600);
     }
 }

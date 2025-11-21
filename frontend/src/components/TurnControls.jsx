@@ -25,7 +25,7 @@
           onClick={onShuffle}
           disabled={disabled || !canShuffle}
         >
-          Shuffle order
+          Shuffle
         </button>
         <button className="danger" onClick={onReset} disabled={disabled}>
           Reset game

@@ -7,7 +7,6 @@ import {
   stealGift,
   unwrapGift,
   endGame,
-  passTurn,
   finishCountrySwap,
 } from './api/client.js';
 import { LoginForm } from './components/LoginForm.jsx';
@@ -16,11 +15,18 @@ import { GiftGrid } from './components/GiftGrid.jsx';
 import { TurnControls } from './components/TurnControls.jsx';
 import { FinalSwapPanel } from './components/FinalSwapPanel.jsx';
 import { ActionOverlay } from './components/ActionOverlay.jsx';
+import {
+  ActionExperienceOverlay,
+  EXPERIENCE_CONFIG,
+} from './components/ActionExperienceOverlay.jsx';
 import { GiftPreviewDialog } from './components/GiftPreviewDialog.jsx';
 import { ConfirmationDialog } from './components/ConfirmationDialog.jsx';
+import { HolidayPopup } from './components/HolidayPopup.jsx';
 import { useCelebration } from './hooks/useCelebration.js';
 import { useHostNarrator } from './hooks/useHostNarrator.js';
 import { useConfirm } from './hooks/useConfirm.js';
+import { useActionSounds } from './hooks/useActionSounds.js';
+import { useHolidayMusic } from './hooks/useHolidayMusic.js';
 import {
   LOCAL_STORAGE_HOST_NAME,
   LOCAL_STORAGE_TOKEN_KEY,
@@ -56,6 +62,10 @@ export default function App() {
   const [giftFilter, setGiftFilter] = useState('all');
   const [previewGiftId, setPreviewGiftId] = useState(null);
   const [showAllCountries, setShowAllCountries] = useState(false);
+  const [showHolidayPopup, setShowHolidayPopup] = useState(false);
+  const [revealAnimationIds, setRevealAnimationIds] = useState(() => new Set());
+  const revealAnimationTimersRef = useRef(new Map());
+  const previousRevealGiftsRef = useRef(new Map());
   const [voiceEnabled, setVoiceEnabled] = useState(() => {
     if (typeof window === 'undefined') {
       return true;
@@ -65,11 +75,16 @@ export default function App() {
   });
   const celebration = useCelebration();
   const [confirmationDialog, confirm] = useConfirm();
+  const { play: playSound } = useActionSounds();
+  const { play: playHolidayMusic } = useHolidayMusic();
   const previousStateRef = useRef();
   const overlayTimeoutRef = useRef(null);
   const placeholderStateRef = useRef(createDefaultState());
   const previousStateSnapshotRef = useRef();
   const hostToken = host?.token || null;
+  const [experienceType, setExperienceType] = useState(null);
+  const experienceTimeoutRef = useRef(null);
+  const experienceResolveRef = useRef(null);
 
 
   const applyState = useCallback(
@@ -89,6 +104,11 @@ export default function App() {
             celebration('locked');
           }
         });
+        if (!previous.gameCompleted && nextState.gameCompleted) {
+          setShowHolidayPopup(true);
+        }
+      } else if (nextState.gameCompleted) {
+        setShowHolidayPopup(true);
       }
       previousStateSnapshotRef.current = previous;
       setGameState(nextState);
@@ -166,6 +186,44 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [previewGiftId, setPreviewGiftId]);
 
+  const showExperience = useCallback((experienceKey) => {
+    if (!experienceKey || !EXPERIENCE_CONFIG[experienceKey]) {
+      return Promise.resolve();
+    }
+    if (experienceResolveRef.current) {
+      experienceResolveRef.current();
+      experienceResolveRef.current = null;
+    }
+    if (experienceTimeoutRef.current) {
+      clearTimeout(experienceTimeoutRef.current);
+      experienceTimeoutRef.current = null;
+    }
+    setExperienceType(experienceKey);
+    return new Promise((resolve) => {
+      experienceResolveRef.current = resolve;
+      experienceTimeoutRef.current = setTimeout(() => {
+        setExperienceType(null);
+        experienceTimeoutRef.current = null;
+        experienceResolveRef.current = null;
+        resolve();
+      }, EXPERIENCE_CONFIG[experienceKey].durationMs);
+    });
+  }, []);
+
+  const cancelExperience = useCallback(() => {
+    if (experienceTimeoutRef.current) {
+      clearTimeout(experienceTimeoutRef.current);
+      experienceTimeoutRef.current = null;
+    }
+    if (experienceResolveRef.current) {
+      experienceResolveRef.current();
+      experienceResolveRef.current = null;
+    }
+    setExperienceType(null);
+  }, []);
+
+  useEffect(() => () => cancelExperience(), [cancelExperience]);
+
   const handleLogin = async (credentials) => {
     setActionLoading(true);
     setError(null);
@@ -183,13 +241,18 @@ export default function App() {
   };
 
   const handleAction = useCallback(
-    async (action, overlayType) => {
+    async (action, overlayType, experienceKey) => {
       if (!host?.token) {
         setError('Host login required for that action.');
         return;
       }
       setActionLoading(true);
       setError(null);
+
+      let experiencePromise = Promise.resolve();
+      if (experienceKey) {
+        experiencePromise = showExperience(experienceKey);
+      }
 
       if (overlayType) {
         if (overlayTimeoutRef.current) {
@@ -201,9 +264,11 @@ export default function App() {
       let success = false;
       try {
         const state = await action();
+        await experiencePromise;
         applyState(state);
         success = true;
       } catch (err) {
+        cancelExperience();
         setError(err.message);
       } finally {
         setActionLoading(false);
@@ -219,20 +284,25 @@ export default function App() {
         }
       }
     },
-    [host, applyState, setError, setActiveOverlay]
+    [host, applyState, setError, setActiveOverlay, showExperience, cancelExperience]
   );
 
   const confirmAction = useCallback(
-    (dialogOptions, action, overlayType) => {
+    (dialogOptions, action, overlayType, experienceType) => {
       confirm({
         title: dialogOptions.title,
         message: dialogOptions.message,
         confirmLabel: dialogOptions.confirmLabel,
-        onConfirm: () => handleAction(action, overlayType),
+        onConfirm: () => {
+          if (dialogOptions.sound) {
+            playSound(dialogOptions.sound);
+          }
+          handleAction(action, overlayType, experienceType);
+        },
         onCancel: dialogOptions.onCancel,
       });
     },
-    [confirm, handleAction]
+    [confirm, handleAction, playSound]
   );
 
   const handleReveal = useCallback(
@@ -249,12 +319,14 @@ export default function App() {
           title: 'Reveal gift?',
           message: 'Reveal this mystery gift for everyone to see?',
           confirmLabel: 'Reveal',
+          sound: 'unwrap',
         },
         () =>
           unwrapGift(host.token, {
             participantId: gameState.currentParticipantId,
             giftId: gift.id,
           }),
+        'unwrap',
         'unwrap'
       );
     },
@@ -278,15 +350,19 @@ export default function App() {
         'its current owner';
       confirmAction(
         {
-          title: 'Steal gift?',
-          message: `Steal "${gift.name}" from ${ownerName}?`,
-          confirmLabel: 'Steal',
+          title: isSwapMode ? 'Swap gift?' : 'Steal gift?',
+          message: isSwapMode
+            ? `Swap "${gift.name}" with ${ownerName}?`
+            : `Steal "${gift.name}" from ${ownerName}?`,
+          confirmLabel: isSwapMode ? 'Swap' : 'Steal',
+          sound: isSwapMode ? 'swap' : 'steal',
         },
         () =>
           stealGift(host.token, {
             participantId: gameState.currentParticipantId,
             giftId: gift.id,
           }),
+        isSwapMode ? 'swap' : 'steal',
         isSwapMode ? 'swap' : 'steal'
       );
     },
@@ -324,45 +400,6 @@ export default function App() {
     setPreviewGiftId(null);
   }, [setPreviewGiftId]);
 
-  const handlePass = useCallback(
-    () => {
-      if (!gameState.currentParticipantId) {
-        return;
-      }
-      if (!host?.token) {
-        setError('Host login required for that action.');
-        return;
-      }
-      const isSwapMode = Boolean(
-        gameState.swapModeActive || (gameState.finalSwapAvailable && !gameState.gameCompleted)
-      );
-      if (!isSwapMode) {
-        return;
-      }
-      confirmAction(
-        {
-          title: 'Pass on swap?',
-          message: 'Pass without stealing a gift?',
-          confirmLabel: 'Pass',
-        },
-        () =>
-          passTurn(host.token, {
-            participantId: gameState.currentParticipantId,
-          }),
-        'swap'
-      );
-    },
-    [
-      confirmAction,
-      host,
-      gameState.swapModeActive,
-      gameState.finalSwapAvailable,
-      gameState.gameCompleted,
-      gameState.currentParticipantId,
-      setError,
-    ]
-  );
-
   const handleShuffle = useCallback(
     () => {
       if (!host?.token) {
@@ -374,8 +411,10 @@ export default function App() {
           title: 'Shuffle participants?',
           message: 'Randomize the play order before the game starts?',
           confirmLabel: 'Shuffle',
+          sound: 'shuffle',
         },
         () => shuffleParticipants(host.token),
+        'shuffle',
         'shuffle'
       );
     },
@@ -393,7 +432,9 @@ export default function App() {
         message: 'This will erase the current game state and start over. Continue?',
         confirmLabel: 'Reset',
       },
-      () => resetGame(host.token)
+      () => resetGame(host.token),
+      undefined,
+      'reset'
     );
   }, [confirmAction, host, setError]);
 
@@ -423,7 +464,9 @@ export default function App() {
         message: 'Finalize swaps for this country and move on?',
         confirmLabel: 'Lock gifts',
       },
-      () => finishCountrySwap(host.token)
+      () => finishCountrySwap(host.token),
+      'swap',
+      'swap'
     );
   }, [confirmAction, host, setError]);
 
@@ -465,6 +508,55 @@ export default function App() {
     });
     return map;
   }, [displayState.gifts]);
+
+  useEffect(() => {
+    const previousMap = previousRevealGiftsRef.current;
+    const nextMap = new Map();
+    const newlyRevealed = [];
+    (displayState.gifts || []).forEach((gift) => {
+      const previousGift = previousMap.get(gift.id);
+      if (previousGift && !previousGift.revealed && gift.revealed) {
+        newlyRevealed.push(gift.id);
+      }
+      nextMap.set(gift.id, gift);
+    });
+    previousRevealGiftsRef.current = nextMap;
+    if (newlyRevealed.length === 0) {
+      return;
+    }
+    newlyRevealed.forEach((giftId) => {
+      setRevealAnimationIds((current) => {
+        if (current.has(giftId)) {
+          return current;
+        }
+        const next = new Set(current);
+        next.add(giftId);
+        return next;
+      });
+      if (revealAnimationTimersRef.current.has(giftId)) {
+        clearTimeout(revealAnimationTimersRef.current.get(giftId));
+      }
+      const timer = setTimeout(() => {
+        setRevealAnimationIds((current) => {
+          if (!current.has(giftId)) {
+            return current;
+          }
+          const next = new Set(current);
+          next.delete(giftId);
+          return next;
+        });
+        revealAnimationTimersRef.current.delete(giftId);
+      }, 5000);
+      revealAnimationTimersRef.current.set(giftId, timer);
+    });
+  }, [displayState.gifts]);
+
+  useEffect(() => {
+    return () => {
+      revealAnimationTimersRef.current.forEach((timer) => clearTimeout(timer));
+      revealAnimationTimersRef.current.clear();
+    };
+  }, []);
 
   const giftFilterOptions = useMemo(() => {
     const revealed = visibleGifts.filter((gift) => gift.revealed);
@@ -579,6 +671,7 @@ export default function App() {
       {error && <div className="toast error">{error}</div>}
       {actionLoading && <div className="toast info">Working...</div>}
       {activeOverlay && <ActionOverlay type={activeOverlay} />}
+      <ActionExperienceOverlay type={experienceType} />
 
       <main className="layout">
         <div className="left-column">
@@ -604,7 +697,6 @@ export default function App() {
             <FinalSwapPanel
               currentParticipant={currentParticipant}
               countryName={activeSwapCountry}
-              onPass={handlePass}
               onEnd={handleFinishCountrySwap}
             />
           )}
@@ -626,10 +718,18 @@ export default function App() {
             activeFilter={giftFilter}
             onFilterChange={setGiftFilter}
             giftPositions={giftPositions}
+            animatedRevealGiftIds={revealAnimationIds}
+            revealAnimationGif={EXPERIENCE_CONFIG.unwrap.gif}
           />
         </div>
       </main>
       <GiftPreviewDialog gift={previewGift} owner={previewOwner} onClose={handleClosePreview} />
+      {showHolidayPopup && (
+        <HolidayPopup
+          onClose={() => setShowHolidayPopup(false)}
+          onPlayMusic={playHolidayMusic}
+        />
+      )}
       </div>
     </>
   );
