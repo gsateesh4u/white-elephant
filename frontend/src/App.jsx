@@ -61,7 +61,7 @@ export default function App() {
   const [activeOverlay, setActiveOverlay] = useState(null);
   const [giftFilter, setGiftFilter] = useState('all');
   const [previewGiftId, setPreviewGiftId] = useState(null);
-  const [showAllCountries, setShowAllCountries] = useState(false);
+  const [countryFilter, setCountryFilter] = useState('all');
   const [showHolidayPopup, setShowHolidayPopup] = useState(false);
   const [revealAnimationIds, setRevealAnimationIds] = useState(() => new Set());
   const revealAnimationTimersRef = useRef(new Map());
@@ -82,6 +82,7 @@ export default function App() {
   const placeholderStateRef = useRef(createDefaultState());
   const previousStateSnapshotRef = useRef();
   const hostToken = host?.token || null;
+  const autoCountryFilterRef = useRef('all');
   const [experienceType, setExperienceType] = useState(null);
   const experienceTimeoutRef = useRef(null);
   const experienceResolveRef = useRef(null);
@@ -151,9 +152,9 @@ export default function App() {
     previousStateRef.current = undefined;
     previousStateSnapshotRef.current = undefined;
     setPreviewGiftId(null);
-    setShowAllCountries(false);
+    setCountryFilter('all');
     setInitialLoading(false);
-  }, [setGameState, setGiftFilter, setError, setInitialLoading, setPreviewGiftId, setShowAllCountries]);
+  }, [setGameState, setGiftFilter, setError, setInitialLoading, setPreviewGiftId, setCountryFilter]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -378,10 +379,6 @@ export default function App() {
     ]
   );
 
-  const handleToggleAllCountries = useCallback(() => {
-    setShowAllCountries((previous) => !previous);
-  }, []);
-
   const handleToggleVoice = useCallback(() => {
     setVoiceEnabled((previous) => !previous);
   }, []);
@@ -483,23 +480,25 @@ export default function App() {
   const currentParticipant = displayState.participants.find(
     (participant) => participant.id === currentParticipantId
   );
-
   const currentCountry = currentParticipant?.country;
+
+  useEffect(() => {
+    if (currentCountry !== 'India' && currentCountry !== 'US') {
+      return;
+    }
+    if (countryFilter === autoCountryFilterRef.current) {
+      setCountryFilter(currentCountry);
+      autoCountryFilterRef.current = currentCountry;
+    }
+  }, [currentCountry, countryFilter]);
   const activeSwapCountry = displayState.currentCountry || null;
-  const eligibleGifts = useMemo(() => {
+  const visibleGifts = useMemo(() => {
     const giftsList = displayState.gifts || [];
-    if (!currentCountry) {
+    if (countryFilter === 'all') {
       return giftsList;
     }
-    return giftsList.filter((gift) => gift.country === currentCountry);
-  }, [displayState.gifts, currentCountry]);
-
-  const visibleGifts = useMemo(() => {
-    if (showAllCountries) {
-      return displayState.gifts || [];
-    }
-    return eligibleGifts;
-  }, [showAllCountries, displayState.gifts, eligibleGifts]);
+    return giftsList.filter((gift) => gift.country === countryFilter);
+  }, [displayState.gifts, countryFilter]);
 
   const giftPositions = useMemo(() => {
     const map = new Map();
@@ -712,14 +711,14 @@ export default function App() {
             onReveal={handleReveal}
             onSteal={handleSteal}
             onPreview={handlePreviewGift}
-            showAllCountries={showAllCountries}
-            onToggleAllCountries={handleToggleAllCountries}
             filters={giftFilterOptions}
             activeFilter={giftFilter}
             onFilterChange={setGiftFilter}
             giftPositions={giftPositions}
             animatedRevealGiftIds={revealAnimationIds}
             revealAnimationGif={EXPERIENCE_CONFIG.unwrap.gif}
+            countryFilter={countryFilter}
+            onCountryFilterChange={setCountryFilter}
           />
         </div>
       </main>

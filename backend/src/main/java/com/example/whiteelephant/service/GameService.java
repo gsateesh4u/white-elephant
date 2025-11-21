@@ -127,6 +127,10 @@ public class GameService {
     }
 
     public synchronized void resetGameState() {
+        resetGameState(true);
+    }
+
+    private synchronized void resetGameState(boolean clearHostToken) {
         state.getParticipants().clear();
         state.getGifts().clear();
         state.getTurnQueue().clear();
@@ -141,7 +145,9 @@ public class GameService {
         state.setSwapModeActive(false);
         state.setCurrentParticipantId(null);
         state.setFirstParticipantId(null);
-        activeHostToken = null;
+        if (clearHostToken) {
+            activeHostToken = null;
+        }
 
         List<Participant> participants = loadOrSeedParticipants();
         state.getParticipants().addAll(participants);
@@ -538,7 +544,7 @@ public class GameService {
 
     public synchronized GameStateResponse resetGame(String token) {
         requireHostToken(token);
-        resetGameState();
+        resetGameState(false);
         return fullStateResponse();
     }
 

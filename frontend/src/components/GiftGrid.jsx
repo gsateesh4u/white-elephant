@@ -12,8 +12,8 @@ export function GiftGrid({
   onReveal,
   onSteal,
   onPreview,
-  showAllCountries = false,
-  onToggleAllCountries,
+  countryFilter = 'all',
+  onCountryFilterChange,
   readonly = false,
   highlightGiftIds = null,
   giftPositions = null,
@@ -28,10 +28,6 @@ export function GiftGrid({
   const hasFilters = filters.length > 0;
   const hasGifts = gifts.length > 0;
 
-  const currentCountryName = currentParticipant?.country;
-  const scopeButtonLabel = showAllCountries
-    ? (currentCountryName ? `View ${currentCountryName} gifts` : 'View current country')
-    : 'View all countries';
   const allowInteractions = !readonly;
 
   return (
@@ -47,21 +43,23 @@ export function GiftGrid({
             </span>
           )}
         </div>
-        {(onToggleAllCountries || hasFilters) && (
-          <div className="gift-header-tools">
-            {onToggleAllCountries && (
-              <button
-                type="button"
-                className={`gift-scope-toggle${showAllCountries ? ' active' : ''}`}
-                onClick={onToggleAllCountries}
-                aria-pressed={showAllCountries}
-                title={showAllCountries ? 'Switch back to current country gifts' : 'View gifts from all countries'}
+      {(onCountryFilterChange || hasFilters) && (
+        <div className="gift-header-tools">
+          {typeof onCountryFilterChange === 'function' && (
+            <label className="gift-filter-dropdown">
+              <span className="label">Country</span>
+              <select
+                value={countryFilter}
+                onChange={(event) => onCountryFilterChange?.(event.target.value)}
+                aria-label="Filter by country"
               >
-                <span className="icon" aria-hidden="true">🌍</span>
-                <span className="text">{scopeButtonLabel}</span>
-              </button>
-            )}
-            {hasFilters && (
+                <option value="all">All countries</option>
+                <option value="India">India</option>
+                <option value="US">US</option>
+              </select>
+            </label>
+          )}
+          {hasFilters && (
               <label className="gift-filter-dropdown">
                 <span className="label">Filter</span>
                 <select
@@ -89,9 +87,9 @@ export function GiftGrid({
                 : null;
               const isCurrentGift = currentParticipantId && gift.winnerParticipantId === currentParticipantId;
               const isCrossCountryView =
-                showAllCountries &&
-                currentParticipant &&
-                gift.country !== currentParticipant.country;
+                Boolean(currentParticipant) &&
+                ((countryFilter === 'all' && gift.country !== currentParticipant.country) ||
+                  (countryFilter !== 'all' && countryFilter !== currentParticipant.country));
               const canReveal =
                 allowInteractions &&
                 !isCrossCountryView &&

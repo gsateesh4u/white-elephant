@@ -26,5 +26,9 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/api/assets/gifts/**")
                 .addResourceLocations("classpath:/static/images/gifts/")
                 .setCachePeriod(3600);
+
+        registry.addResourceHandler("/api/assets/audio/**")
+                .addResourceLocations("classpath:/static/audio/")
+                .setCachePeriod(3600);
     }
 }
