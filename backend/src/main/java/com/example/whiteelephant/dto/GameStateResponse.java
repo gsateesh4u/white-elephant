@@ -4,8 +4,10 @@ import com.example.whiteelephant.model.GameState;
 import com.example.whiteelephant.model.Gift;
 import com.example.whiteelephant.model.Participant;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class GameStateResponse {
@@ -15,12 +17,16 @@ public class GameStateResponse {
     private final List<String> completedTurnOrder;
     private final Map<String, String> immediateStealBlocks;
     private final String currentParticipantId;
+    private final String currentParticipantName;
     private final boolean gameStarted;
     private final boolean gameCompleted;
     private final boolean finalSwapAvailable;
     private final boolean finalSwapUsed;
     private final boolean swapModeActive;
     private final String firstParticipantId;
+    private final String firstParticipantName;
+    private final List<String> upcomingParticipantNames;
+    private final String requestingParticipantName;
     private final List<String> countrySequence;
     private final List<String> completedCountries;
     private final String currentCountry;
@@ -31,12 +37,16 @@ public class GameStateResponse {
                               List<String> completedTurnOrder,
                               Map<String, String> immediateStealBlocks,
                               String currentParticipantId,
+                              String currentParticipantName,
                               boolean gameStarted,
                               boolean gameCompleted,
                               boolean finalSwapAvailable,
                               boolean finalSwapUsed,
                               boolean swapModeActive,
                               String firstParticipantId,
+                              String firstParticipantName,
+                              List<String> upcomingParticipantNames,
+                              String requestingParticipantName,
                               List<String> countrySequence,
                               List<String> completedCountries,
                               String currentCountry) {
@@ -46,31 +56,64 @@ public class GameStateResponse {
         this.completedTurnOrder = completedTurnOrder;
         this.immediateStealBlocks = immediateStealBlocks;
         this.currentParticipantId = currentParticipantId;
+        this.currentParticipantName = currentParticipantName;
         this.gameStarted = gameStarted;
         this.gameCompleted = gameCompleted;
         this.finalSwapAvailable = finalSwapAvailable;
         this.finalSwapUsed = finalSwapUsed;
         this.swapModeActive = swapModeActive;
         this.firstParticipantId = firstParticipantId;
+        this.firstParticipantName = firstParticipantName;
+        this.upcomingParticipantNames = upcomingParticipantNames;
+        this.requestingParticipantName = requestingParticipantName;
         this.countrySequence = countrySequence;
         this.completedCountries = completedCountries;
         this.currentCountry = currentCountry;
     }
 
-    public static GameStateResponse from(GameState state, boolean includeSensitiveDetails) {
+    public static GameStateResponse from(GameState state, boolean includeSensitiveDetails, String privilegedParticipantId) {
         List<Participant> participantEntities = state.getParticipants();
         List<ParticipantView> participants = java.util.stream.IntStream
                 .range(0, participantEntities.size())
-                .mapToObj(index -> ParticipantView.from(participantEntities.get(index), index + 1))
+                .mapToObj(index -> ParticipantView.from(participantEntities.get(index), index + 1, includeSensitiveDetails))
                 .collect(Collectors.toList());
+
+        Map<String, Participant> participantById = state.getParticipants().stream()
+                .collect(Collectors.toMap(Participant::getId, participant -> participant));
 
         List<GiftView> gifts = state.getGifts().stream()
-                .map(gift -> GiftView.from(gift, includeSensitiveDetails))
+                .map(gift -> GiftView.from(gift, includeSensitiveDetails, privilegedParticipantId, participantById))
                 .collect(Collectors.toList());
 
-        List<String> upcoming = state.getTurnQueue().stream().collect(Collectors.toList());
-        List<String> completed = List.copyOf(state.getCompletedTurnOrder());
-        Map<String, String> blocks = Map.copyOf(state.getImmediateStealBlocks());
+        String rawCurrentParticipantId = state.getCurrentParticipantId();
+        String currentParticipantId = includeSensitiveDetails ? rawCurrentParticipantId : null;
+        String currentParticipantName = rawCurrentParticipantId != null && participantById.get(rawCurrentParticipantId) != null
+                ? participantById.get(rawCurrentParticipantId).getName()
+                : null;
+        String rawFirstParticipantId = state.getFirstParticipantId();
+        String firstParticipantId = includeSensitiveDetails ? rawFirstParticipantId : null;
+        String firstParticipantName = rawFirstParticipantId != null && participantById.get(rawFirstParticipantId) != null
+                ? participantById.get(rawFirstParticipantId).getName()
+                : null;
+
+        List<String> upcomingParticipantNames = state.getTurnQueue().stream()
+                .map(participantById::get)
+                .filter(Objects::nonNull)
+                .map(Participant::getName)
+                .collect(Collectors.toList());
+
+        Participant requestingParticipant = privilegedParticipantId != null
+                ? participantById.get(privilegedParticipantId)
+                : null;
+        String requestingParticipantName = requestingParticipant != null ? requestingParticipant.getName() : null;
+
+        List<String> upcoming = includeSensitiveDetails
+                ? state.getTurnQueue().stream().collect(Collectors.toList())
+                : List.of();
+        List<String> completed = includeSensitiveDetails ? List.copyOf(state.getCompletedTurnOrder()) : List.of();
+        Map<String, String> blocks = includeSensitiveDetails
+                ? Map.copyOf(state.getImmediateStealBlocks())
+                : Map.of();
 
         return new GameStateResponse(
                 participants,
@@ -78,13 +121,17 @@ public class GameStateResponse {
                 upcoming,
                 completed,
                 blocks,
-                state.getCurrentParticipantId(),
+                currentParticipantId,
+                currentParticipantName,
                 state.isGameStarted(),
                 state.isGameCompleted(),
                 state.isFinalSwapAvailable(),
                 state.isFinalSwapUsed(),
                 state.isSwapModeActive(),
-                state.getFirstParticipantId(),
+                firstParticipantId,
+                firstParticipantName,
+                upcomingParticipantNames,
+                requestingParticipantName,
                 List.copyOf(state.getCountrySequence()),
                 List.copyOf(state.getCompletedCountries()),
                 state.getCurrentCountry()
@@ -115,6 +162,10 @@ public class GameStateResponse {
         return currentParticipantId;
     }
 
+    public String getCurrentParticipantName() {
+        return currentParticipantName;
+    }
+
     public boolean isGameStarted() {
         return gameStarted;
     }
@@ -137,6 +188,18 @@ public class GameStateResponse {
 
     public String getFirstParticipantId() {
         return firstParticipantId;
+    }
+
+    public String getFirstParticipantName() {
+        return firstParticipantName;
+    }
+
+    public List<String> getUpcomingParticipantNames() {
+        return upcomingParticipantNames;
+    }
+
+    public String getRequestingParticipantName() {
+        return requestingParticipantName;
     }
 
     public List<String> getCountrySequence() {
@@ -168,9 +231,9 @@ public class GameStateResponse {
             this.playOrder = playOrder;
         }
 
-        public static ParticipantView from(Participant participant, int playOrder) {
+        public static ParticipantView from(Participant participant, int playOrder, boolean includeSensitiveDetails) {
             return new ParticipantView(
-                    participant.getId(),
+                    includeSensitiveDetails ? participant.getId() : null,
                     participant.getName(),
                     participant.getPhotoUrl(),
                     participant.getCountry(),
@@ -214,9 +277,12 @@ public class GameStateResponse {
         private final boolean revealed;
         private final String originalOwnerParticipantId;
         private final String winnerParticipantId;
+        private final String winnerParticipantName;
+        private final String winnerParticipantCountry;
         private final String country;
         private final int timesStolen;
         private final boolean locked;
+        private final boolean ownedByRequester;
 
         private GiftView(String id,
                          String name,
@@ -227,9 +293,12 @@ public class GameStateResponse {
                          boolean revealed,
                          String originalOwnerParticipantId,
                          String winnerParticipantId,
+                         String winnerParticipantName,
+                         String winnerParticipantCountry,
                          String country,
                          int timesStolen,
-                         boolean locked) {
+                         boolean locked,
+                         boolean ownedByRequester) {
             this.id = id;
             this.name = name;
             this.description = description;
@@ -239,16 +308,30 @@ public class GameStateResponse {
             this.revealed = revealed;
             this.originalOwnerParticipantId = originalOwnerParticipantId;
             this.winnerParticipantId = winnerParticipantId;
+            this.winnerParticipantName = winnerParticipantName;
+            this.winnerParticipantCountry = winnerParticipantCountry;
             this.country = country;
             this.timesStolen = timesStolen;
             this.locked = locked;
+            this.ownedByRequester = ownedByRequester;
         }
 
-        public static GiftView from(Gift gift, boolean includeSensitiveDetails) {
+        public static GiftView from(Gift gift, boolean includeSensitiveDetails, String privilegedParticipantId, Map<String, Participant> participantById) {
             boolean showDetails = includeSensitiveDetails || gift.isRevealed();
-            boolean showOriginalOwner = includeSensitiveDetails;
+            String originalOwnerParticipantId = gift.getOriginalOwnerParticipantId();
+            boolean showOriginalOwner = includeSensitiveDetails || Objects.equals(originalOwnerParticipantId, privilegedParticipantId);
             List<String> proxyImageUrls = showDetails ? buildProxyUrls(gift) : List.of();
             String primaryProxyUrl = proxyImageUrls.isEmpty() ? null : proxyImageUrls.get(0);
+            boolean ownedByRequester = Objects.equals(originalOwnerParticipantId, privilegedParticipantId);
+            String winnerParticipantId = gift.isRevealed() ? gift.getWinnerParticipantId() : null;
+            String winnerParticipantName = null;
+            String winnerParticipantCountry = null;
+            Participant winner = winnerParticipantId != null ? participantById.get(winnerParticipantId) : null;
+            if (winner != null) {
+                winnerParticipantName = winner.getName();
+                winnerParticipantCountry = winner.getCountry();
+            }
+            String exposedWinnerId = includeSensitiveDetails ? winnerParticipantId : null;
 
             return new GiftView(
                     gift.getId(),
@@ -258,11 +341,14 @@ public class GameStateResponse {
                     proxyImageUrls,
                     primaryProxyUrl,
                     gift.isRevealed(),
-                    showOriginalOwner ? gift.getOriginalOwnerParticipantId() : null,
-                    gift.getWinnerParticipantId(),
+                    showOriginalOwner ? originalOwnerParticipantId : null,
+                    exposedWinnerId,
+                    winnerParticipantName,
+                    winnerParticipantCountry,
                     gift.getCountry(),
                     gift.getTimesStolen(),
-                    gift.isLocked()
+                    gift.isLocked(),
+                    ownedByRequester
             );
         }
 
@@ -305,6 +391,7 @@ public class GameStateResponse {
             return revealed;
         }
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         public String getOriginalOwnerParticipantId() {
             return originalOwnerParticipantId;
         }
@@ -323,6 +410,18 @@ public class GameStateResponse {
 
         public boolean isLocked() {
             return locked;
+        }
+
+        public String getWinnerParticipantName() {
+            return winnerParticipantName;
+        }
+
+        public String getWinnerParticipantCountry() {
+            return winnerParticipantCountry;
+        }
+
+        public boolean isOwnedByRequester() {
+            return ownedByRequester;
         }
 
     }

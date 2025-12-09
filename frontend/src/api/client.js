@@ -43,8 +43,14 @@ export function login(credentials) {
   return apiFetch('/host/login', { method: 'POST', body: credentials });
 }
 
-export function fetchState(token) {
-  return apiFetch('/game/state', { token });
+export function fetchState({ participantId, token } = {}) {
+  const params = new URLSearchParams();
+  if (participantId) {
+    params.set('participant', participantId);
+  }
+  const query = params.toString();
+  const path = query ? `/game/state?${query}` : '/game/state';
+  return apiFetch(path, { token });
 }
 
 export function shuffleParticipants(token) {

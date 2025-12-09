@@ -1,14 +1,24 @@
-﻿export function ParticipantList({
+export function ParticipantList({
   participants,
   gifts,
   currentParticipantId,
+  currentParticipantName,
   firstParticipantId,
+  firstParticipantName,
   swapModeActive,
 }) {
   const giftById = new Map(gifts.map((gift) => [gift.id, gift]));
   const orderedParticipants = [...participants].sort((a, b) => {
-    if (a.id === currentParticipantId) return -1;
-    if (b.id === currentParticipantId) return 1;
+    const isACurrent =
+      currentParticipantId
+        ? a.id === currentParticipantId
+        : currentParticipantName && a.name === currentParticipantName;
+    const isBCurrent =
+      currentParticipantId
+        ? b.id === currentParticipantId
+        : currentParticipantName && b.name === currentParticipantName;
+    if (isACurrent && !isBCurrent) return -1;
+    if (!isACurrent && isBCurrent) return 1;
     return 0;
   });
 
@@ -20,14 +30,20 @@
       </div>
       <div className="participant-list">
         {orderedParticipants.map((participant) => {
-          const isCurrent = participant.id === currentParticipantId;
-          const isFirst = participant.id === firstParticipantId;
+          const isCurrent =
+            currentParticipantId
+              ? participant.id === currentParticipantId
+              : currentParticipantName && participant.name === currentParticipantName;
+          const isFirst =
+            firstParticipantId
+              ? participant.id === firstParticipantId
+              : firstParticipantName && participant.name === firstParticipantName;
           const gift = participant.currentGiftId
             ? giftById.get(participant.currentGiftId)
             : null;
           return (
             <div
-              key={participant.id}
+              key={participant.id ?? `participant-${participant.playOrder}`}
               className={`participant-card${isCurrent ? ' active' : ''}`}
             >
               <img src={participant.photoUrl} alt={participant.name} />

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -23,8 +24,11 @@ public class GameController {
     }
 
     @GetMapping("/state")
-    public GameStateResponse state(@RequestHeader(value = "X-Host-Token", required = false) String token) {
-        return gameService.getState(token);
+    public GameStateResponse state(
+            @RequestHeader(value = "X-Host-Token", required = false) String token,
+            @RequestParam(value = "participant", required = false) String participantId
+    ) {
+        return gameService.getState(token, participantId);
     }
 
     @PostMapping("/shuffle")

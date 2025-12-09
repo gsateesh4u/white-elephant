@@ -46,7 +46,7 @@ export default function ParticipantViewApp() {
       return '';
     }
     const params = new URLSearchParams(window.location.search);
-    return params.get('participant') || '';
+    return (params.get('participant') || '').trim();
   }, []);
   const [gameState, setGameState] = useState(createDefaultState);
   const [loading, setLoading] = useState(true);
@@ -65,6 +65,7 @@ export default function ParticipantViewApp() {
   const previousGiftsRef = useRef(new Map());
   const participants = gameState?.participants ?? [];
   const gifts = gameState?.gifts ?? [];
+  const requestingParticipantName = gameState?.requestingParticipantName;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -176,7 +177,7 @@ export default function ParticipantViewApp() {
 
     const loadState = async () => {
       try {
-        const next = await fetchState();
+        const next = await fetchState({ participantId: participantCode || undefined });
         if (!cancelled) {
           setGameState(next);
           setError(null);
@@ -200,7 +201,7 @@ export default function ParticipantViewApp() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [participantCode]);
 
   const giftPositions = useMemo(() => {
     const map = new Map();
@@ -209,25 +210,21 @@ export default function ParticipantViewApp() {
     });
     return map;
   }, [gameState?.gifts]);
-  const matchedParticipant = useMemo(() => {
-    if (!participantCode) {
-      return null;
-    }
-    const normalized = participantCode.trim().toLowerCase();
-    if (!normalized) {
-      return null;
-    }
-    return (
-      participants.find((participant) => participant.id.toLowerCase() === normalized) || null
-    );
-  }, [participantCode, participants]);
-
   const currentParticipant = useMemo(() => {
-    if (!gameState?.currentParticipantId) {
-      return null;
+    if (gameState?.currentParticipantId) {
+      return (
+        participants.find((participant) => participant.id === gameState.currentParticipantId) || null
+      );
     }
-    return participants.find((participant) => participant.id === gameState.currentParticipantId) || null;
-  }, [participants, gameState?.currentParticipantId]);
+    if (gameState?.currentParticipantName) {
+      return (
+        participants.find((participant) => participant.name === gameState.currentParticipantName) || {
+          name: gameState.currentParticipantName,
+        }
+      );
+    }
+    return null;
+  }, [participants, gameState?.currentParticipantId, gameState?.currentParticipantName]);
 
   const revealedGiftCount = useMemo(
     () => gifts.filter((gift) => gift.revealed).length,
@@ -238,20 +235,18 @@ export default function ParticipantViewApp() {
     [gifts]
   );
   const participantGift = useMemo(() => {
-    if (!matchedParticipant) {
-      return null;
-    }
-    return gifts.find((gift) => gift.originalOwnerParticipantId === matchedParticipant.id) || null;
-  }, [gifts, matchedParticipant]);
+    return gifts.find((gift) => gift.ownedByRequester) || null;
+  }, [gifts]);
   const participantGiftOwner = useMemo(() => {
-    if (!participantGift?.winnerParticipantId) {
-      return null;
+    if (participantGift?.winnerParticipantName) {
+      const match = participants.find((participant) => participant.name === participantGift.winnerParticipantName);
+      if (match) {
+        return match;
+      }
+      return { name: participantGift.winnerParticipantName, country: participantGift.winnerParticipantCountry };
     }
-    return (
-      participants.find((participant) => participant.id === participantGift.winnerParticipantId) ||
-      null
-    );
-  }, [participants, participantGift?.winnerParticipantId]);
+    return null;
+  }, [participants, participantGift?.winnerParticipantName, participantGift?.winnerParticipantCountry]);
 
   const currentStatusMessage = useMemo(() => {
     if (!gameState?.gameStarted) {
@@ -272,6 +267,9 @@ export default function ParticipantViewApp() {
   }, [gameState?.gameStarted, gameState?.gameCompleted, gameState?.swapModeActive, currentParticipant]);
 
   const upcomingParticipantNames = useMemo(() => {
+    if (Array.isArray(gameState?.upcomingParticipantNames) && gameState.upcomingParticipantNames.length > 0) {
+      return gameState.upcomingParticipantNames;
+    }
     const turnOrder = Array.isArray(gameState?.upcomingTurnOrder)
       ? gameState.upcomingTurnOrder
       : [];
@@ -280,7 +278,7 @@ export default function ParticipantViewApp() {
         participants.find((participant) => participant.id === participantId)?.name || null
       )
       .filter(Boolean);
-  }, [gameState?.upcomingTurnOrder, participants]);
+  }, [gameState?.upcomingParticipantNames, gameState?.upcomingTurnOrder, participants]);
 
   const nextUpSummary = useMemo(
     () => formatNextUp(upcomingParticipantNames.slice(0, 3)),
@@ -421,15 +419,15 @@ export default function ParticipantViewApp() {
         </form>
         {participantCode ? (
           <div className="helper-result">
-            {!matchedParticipant ? (
-              <span>
-                No participant found with the code <strong>{participantCode}</strong>. Double-check your invite or ask the host.
-              </span>
-            ) : !participantGift ? (
-              <span>
-                We could not locate the gift seeded for <strong>{matchedParticipant.name}</strong>. Ask the host to confirm everyone&apos;s gift has been added.
-              </span>
-            ) : (
+        {!requestingParticipantName ? (
+          <span>
+            No participant found with the code <strong>{participantCode}</strong>. Double-check your invite or ask the host.
+          </span>
+        ) : !participantGift ? (
+          <span>
+            We could not locate the gift seeded for <strong>{requestingParticipantName}</strong>. Ask the host to confirm everyone&apos;s gift has been added.
+          </span>
+        ) : (
               <>
                 <span>
                   Your gift appears at position <strong>#{participantGiftPosition ?? '?'}</strong> out of {totalGifts} gifts in tonight&apos;s lineup.
@@ -475,7 +473,9 @@ export default function ParticipantViewApp() {
               participants={participants}
               gifts={gifts}
               currentParticipantId={gameState?.currentParticipantId}
+              currentParticipantName={gameState?.currentParticipantName}
               firstParticipantId={gameState?.firstParticipantId}
+              firstParticipantName={gameState?.firstParticipantName}
               swapModeActive={Boolean(gameState?.swapModeActive)}
             />
           )}

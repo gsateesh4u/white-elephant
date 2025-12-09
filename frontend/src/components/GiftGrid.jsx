@@ -79,12 +79,17 @@ export function GiftGrid({
         )}
       </div>
       <div className="gift-grid-scroll">
-        {hasGifts ? (
-          <div className="gift-grid">
-            {gifts.map((gift, index) => {
-              const owner = gift.winnerParticipantId
-                ? participantMap.get(gift.winnerParticipantId)
-                : null;
+    {hasGifts ? (
+      <div className="gift-grid">
+        {gifts.map((gift, index) => {
+          const ownerById = gift.winnerParticipantId
+            ? participantMap.get(gift.winnerParticipantId)
+            : null;
+          const owner =
+            ownerById ||
+            (gift.winnerParticipantName
+              ? { name: gift.winnerParticipantName, country: gift.winnerParticipantCountry }
+              : null);
               const isCurrentGift = currentParticipantId && gift.winnerParticipantId === currentParticipantId;
               const isCrossCountryView =
                 Boolean(currentParticipant) &&

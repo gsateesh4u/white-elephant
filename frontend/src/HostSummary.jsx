@@ -30,7 +30,7 @@ export default function HostSummaryApp() {
     setLoading(true);
     setError(null);
     try {
-      const state = await fetchState(hostToken);
+      const state = await fetchState({ token: hostToken });
       setGameState(state);
     } catch (err) {
       setError(err.message || 'Unable to load game state.');

@@ -219,7 +219,7 @@ public class GameService {
     }
 
     private GameStateResponse fullStateResponse() {
-        return GameStateResponse.from(state, true);
+        return GameStateResponse.from(state, true, null);
     }
 
     private void persistState() {
@@ -398,9 +398,10 @@ public class GameService {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
-    public synchronized GameStateResponse getState(String token) {
+    public synchronized GameStateResponse getState(String token, String participantId) {
         boolean includeSensitiveDetails = isAuthorized(token);
-        return GameStateResponse.from(state, includeSensitiveDetails);
+        String privilegedParticipantId = includeSensitiveDetails ? null : participantId;
+        return GameStateResponse.from(state, includeSensitiveDetails, privilegedParticipantId);
     }
 
     public synchronized GameStateResponse shuffleParticipants(String token) {

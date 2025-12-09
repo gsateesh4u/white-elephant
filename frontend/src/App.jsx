@@ -120,7 +120,7 @@ export default function App() {
 
   const refreshState = useCallback(async () => {
     try {
-      const state = await fetchState(hostToken);
+    const state = await fetchState({ token: hostToken });
       applyState(state);
     } catch (err) {
       setError(err.message);
