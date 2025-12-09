@@ -63,6 +63,8 @@ export default function ParticipantViewApp() {
   const [animatedRevealGiftIds, setAnimatedRevealGiftIds] = useState(() => new Set());
   const revealAnimationTimersRef = useRef(new Map());
   const previousGiftsRef = useRef(new Map());
+  const participants = gameState?.participants ?? [];
+  const gifts = gameState?.gifts ?? [];
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -200,8 +202,6 @@ export default function ParticipantViewApp() {
     };
   }, []);
 
-  const participants = gameState?.participants ?? [];
-  const gifts = gameState?.gifts ?? [];
   const giftPositions = useMemo(() => {
     const map = new Map();
     (gameState?.gifts ?? []).forEach((gift, index) => {
